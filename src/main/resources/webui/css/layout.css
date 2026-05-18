@@ -1,0 +1,795 @@
+/**
+ * ページレイアウト関連のスタイルシートです。<br>
+ * <p>
+ * ページ全体のレイアウト、左右分割レイアウト、ページカードレイアウトなどのスタイルを提供します。<br>
+ * また、ページ前提共通で利用するフォームコンポーネントの共通スタイルもここで提供します。<br>
+ * </p>
+ *
+ * @author Kitagawa<br>
+ *
+ *<!--
+ * 更新日		更新者			更新内容
+ * 2026/05/01	Kitagawa		新規作成
+ *-->
+ */
+/*
+ * ============================================================
+ * スタイルリセット
+ * ============================================================
+ */
+/* ---- ボックスモデル・マージンリセット ---- */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+/*
+ * ============================================================
+ * ページ全体
+ * ============================================================
+ */
+/* ---- 縦並び全画面レイアウト ---- */
+body {
+	font-family: var(--font-family);
+	font-size: var(--fs-base);
+	background: var(--color-bg);
+	color: var(--color-text);
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+/*
+ * ============================================================
+ * ブートオーバーレイ
+ * ============================================================
+ */
+/* ---- ブートオーバーレイスタイル ---- */
+.boot-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color-bg);
+	transition: opacity var(--transition-base) ease-out;
+}
+.boot-overlay.hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/*
+ * ============================================================
+ * 切断状態時非表示スタイル
+ * ============================================================
+ */
+/* ---- 切断時非表示要素 ---- */
+body.disconnected .page-message-error,
+body.disconnected .page-message-warn,
+body.disconnected .page-message-info,
+body.disconnected .tab-bar,
+body.disconnected .split-layout,
+body.disconnected .main,
+body.disconnected .page-notice {
+	display: none !important;
+}
+/* ---- 切断メッセージパネル ---- */
+.disconnected-panel {
+	display: none;
+}
+body.disconnected .disconnected-panel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-normal);
+	font-size: var(--fs-normal);
+	color: var(--color-text-muted);
+	text-align: center;
+}
+
+/*
+ * ============================================================
+ * 確認ダイアログ
+ * ============================================================
+ */
+/* ---- バックドロップ ---- */
+.confirm-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 8000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgb(0 0 0 / 50%);
+	animation: confirm-fade-in var(--transition-fast) ease-out;
+}
+@keyframes confirm-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+/* ---- ダイアログ本体 ---- */
+.confirm-dialog {
+	background: var(--color-surface);
+	border: var(--border-width) solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: var(--sp-form-v) var(--sp-form-h);
+	min-width: 20em;
+	max-width: 32em;
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap);
+	animation: confirm-slide-in var(--transition-fast) ease-out;
+}
+@keyframes confirm-slide-in {
+	from { transform: translateY(-0.5em); opacity: 0; }
+	to   { transform: translateY(0);      opacity: 1; }
+}
+/* ---- メッセージテキスト ---- */
+.confirm-message {
+	font-size: var(--fs-small);
+	color: var(--color-text);
+	line-height: var(--lh-loose);
+	padding: var(--sp-confirm-message-t) var(--sp-confirm-message-h) var(--sp-confirm-message-b) var(--sp-confirm-message-h);
+}
+/* ---- ボタン行 ---- */
+.confirm-actions {
+	display: flex;
+	gap: var(--gap-sm);
+	justify-content: flex-end;
+	margin-top: 0;
+}
+/* ---- 実行ボタン(危険操作用) ---- */
+.confirm-ok-btn {
+	background: var(--color-error);
+	color: var(--theme-text);
+}
+.confirm-ok-btn:hover {
+	opacity: var(--opacity-hover);
+}
+
+/*
+ * ============================================================
+ * ヘッダー
+ * ============================================================
+ */
+/* ---- 固定高さのトップバー ---- */
+.header {
+	background: var(--color-surface);
+	border-bottom: var(--border-width) solid var(--color-border);
+	padding: var(--sp-header-v) var(--sp-header-h);
+	display: flex;
+	align-items: center;
+	gap: var(--gap-sm);
+	flex-shrink: 0;
+}
+/* ---- ヘッダーアプリ名テキスト ---- */
+.header-title {
+	font-size: var(--fs-title);
+	color: var(--color-text-title);
+}
+
+/*
+ * ============================================================
+ * メインスクロールエリア
+ * ============================================================
+ */
+/* ---- 縦スクロールメインエリア ---- */
+.main {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--sp-page);
+}
+/* ---- シングルレイアウト時のメインエリアのパディング無効化(form-panelが代替) ---- */
+.main:has(.single-layout) {
+	padding: 0;
+}
+
+/*
+ * ============================================================
+ * ページ通知バー
+ * ============================================================
+ */
+/* ---- ヘッダー直下メッセージバー ---- */
+.page-notice {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-normal);
+	padding: var(--sp-notice-bar-v) var(--sp-notice-bar-h);
+	background: var(--color-surface-alt);
+	border-bottom: var(--border-width) solid var(--color-border);
+	color: var(--color-text-muted);
+	font-size: var(--fs-small);
+	flex-shrink: 0;
+}
+/* ---- スピナーサイズ(page-notice内) ---- */
+.page-notice .loading-spinner {
+	width: var(--size-notice-spinner);
+	height: var(--size-notice-spinner);
+	border-width: var(--weight-notice-spinner);
+}
+
+/*
+ * ============================================================
+ * ページメッセージ
+ * ============================================================
+ */
+/* ---- エラーメッセージ ---- */
+.page-message-error {
+	font-size: var(--fs-small);
+	color: var(--color-error);
+	background: var(--color-error-bg);
+	border: var(--border-width) solid var(--color-error-border-a);
+	padding: var(--sp-page-message-v) var(--sp-page-message-h);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+/* ---- 警告メッセージ ---- */
+.page-message-warn {
+	font-size: var(--fs-small);
+	color: var(--color-warn);
+	background: var(--color-warn-bg);
+	border: var(--border-width) solid var(--color-warn-border-a);
+	padding: var(--sp-page-message-v) var(--sp-page-message-h);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+/* ---- 情報メッセージ ---- */
+.page-message-info {
+	font-size: var(--fs-small);
+	color: var(--color-success);
+	background: var(--color-success-bg);
+	border: var(--border-width) solid var(--color-success-border-a);
+	padding: var(--sp-page-message-v) var(--sp-page-message-h);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/*
+ * ============================================================
+ * タブバー
+ * ============================================================
+ */
+/* ---- ページ切り替えタブバー ---- */
+.tab-bar {
+	display: flex;
+	align-items: flex-end;
+	padding: var(--sp-tab-bar-t) var(--sp-header-h) var(--sp-tab-bar-b) var(--sp-header-h);
+	background: var(--color-surface);
+	border-bottom: var(--border-width) solid var(--color-border);
+	flex-shrink: 0;
+}
+/* ---- タブバー内プロジェクト名 ---- */
+.tab-project-name {
+	margin-left: auto;
+	padding: 0 var(--sp-header-h);
+	color: var(--color-text-muted);
+	white-space: nowrap;
+	align-self: center;
+}
+.tab-project-name:empty {
+	display: none;
+}
+/* ---- タブアイテム ---- */
+.tab-item {
+	display: flex;
+	align-items: center;
+	padding: var(--sp-tab-item-v) var(--sp-tab-item-h);
+	font-size: var(--fs-small);
+	color: var(--color-text-muted);
+	text-decoration: none;
+	border: var(--border-width) solid transparent;
+	border-bottom: none;
+	border-radius: var(--radius-md) var(--radius-md) 0 0;
+	position: relative;
+	bottom: -1px;
+	white-space: nowrap;
+	transition:
+		color var(--transition-base),
+		background var(--transition-base);
+}
+/* ---- タブホバー ---- */
+.tab-item:hover {
+	color: var(--color-text);
+}
+/* ---- アクティブタブ ---- */
+.tab-item.tab-active {
+	color: var(--color-text-heading);
+	background: var(--color-bg);
+	border-color: var(--color-border);
+}
+/* ---- プロジェクト未選択時に非表示 ---- */
+body:not(.has-project) .tab-requires-project {
+	display: none;
+}
+
+/*
+ * ============================================================
+ * 単一コンテンツレイアウト
+ * ============================================================
+ */
+/* ---- 単一コンテンツ最大幅制限コンテナ ---- */
+.single-layout {
+	max-width: var(--w-single-layout);
+	margin: 0 auto;
+	width: 100%;
+}
+
+/*
+ * ============================================================
+ * 左右分割レイアウト
+ * ============================================================
+ */
+/* ---- 左右ペイン横並びレイアウト ---- */
+.split-layout {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+/* ---- 左ペイン(固定幅・一覧等) ---- */
+.split-left {
+	width: var(--w-split-left);
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	border-right: var(--border-width) solid var(--color-border);
+	background: var(--color-surface);
+	overflow: hidden;
+}
+/* ---- 左ペインヘッダー行 ---- */
+.split-left-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--sp-card-v) var(--sp-card-h);
+	min-height: var(--h-split-header);
+	border-bottom: var(--border-width) solid var(--color-border);
+	flex-shrink: 0;
+}
+/* ---- 左ペインヘッダータイトル ---- */
+.split-left-title {
+	font-size: var(--fs-small);
+	color: var(--color-text-muted);
+	font-weight: var(--fw-semibold);
+}
+/* ---- 左ペインリスト本体 ---- */
+.split-left-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--gap-sm);
+}
+/* ---- 右ペイン(可変幅・詳細・フォーム等) ---- */
+.split-right {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	min-width: 0;
+}
+/* ---- 右ペインヘッダー行 ---- */
+.split-right-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--sp-card-v) var(--sp-card-h);
+	min-height: var(--h-split-header);
+	border-bottom: var(--border-width) solid var(--color-border);
+	background: var(--color-surface);
+	flex-shrink: 0;
+	gap: var(--gap-sm);
+}
+/* ---- 右ペインヘッダータイトル ---- */
+.split-right-title {
+	font-size: var(--fs-small);
+	color: var(--color-text-muted);
+	font-weight: var(--fw-semibold);
+}
+/* ---- ヘッダー内ボタン行(上マージンなし) ---- */
+.split-right-header .btn-row {
+	margin-top: 0;
+}
+/* ---- 右ペイン未選択空状態 ---- */
+.split-empty {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/*
+ * ============================================================
+ * 細スクロールバー
+ * ============================================================
+ */
+/* ---- 細スクロールバー ---- */
+.scrollbar-thin::-webkit-scrollbar,
+.form-textarea::-webkit-scrollbar {
+	width: var(--w-scrollbar);
+}
+.scrollbar-thin::-webkit-scrollbar-track,
+.form-textarea::-webkit-scrollbar-track {
+	background: var(--color-bg);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb,
+.form-textarea::-webkit-scrollbar-thumb {
+	background: var(--color-border);
+	border-radius: var(--radius-thin-scrollbar);
+}
+
+/*
+ * ============================================================
+ * ローディングスピナー
+ * ============================================================
+ */
+/* ---- 円形回転ローディングインジケーター ---- */
+.loading-spinner {
+	width: var(--size-spinner);
+	height: var(--size-spinner);
+	border: var(--weight-spinner) solid var(--color-surface-sub);
+	border-top-color: var(--color-accent);
+	border-radius: 50%;
+	animation: loading-spinner var(--anim-loading-spinner) linear infinite;
+}
+/* ---- スピナー回転アニメーション ---- */
+@keyframes loading-spinner {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/*
+ * ============================================================
+ * 汎用コンポーネントスタイル
+ * ============================================================
+ */
+/* ---- 汎用タグバッジ ---- */
+.tag {
+	font-size: var(--fs-tag);
+	padding: var(--sp-tag-v) var(--sp-tag-h);
+	border-radius: var(--radius-round);
+	background: var(--color-leader-bg);
+	color: var(--color-leader);
+	border: var(--border-width) solid var(--color-leader-border);
+	line-height: calc(var(--fs-tag) * 1.8);
+}
+
+/*
+ * ============================================================
+ * 空状態メッセージ
+ * ============================================================
+ */
+/* ---- 空状態プレースホルダー ---- */
+.empty-msg {
+	color: var(--color-text-faint);
+	font-size: var(--fs-small);
+	text-align: center;
+}
+
+/*
+ * ============================================================
+ * UIコンポーネント共通
+ * ============================================================
+ */
+.input-field,
+.input-field-readonly,
+.list-item {
+	border-radius: var(--radius-ui);
+	border-width: var(--border-field-width);
+}
+
+/*
+ * ============================================================
+ * 入力フィールド
+ * ============================================================
+ */
+/* ---- テキスト入力基底スタイル ---- */
+.input-field {
+	background: var(--color-surface-alt);
+	color: var(--color-text);
+	border: var(--border-field-width) solid var(--color-border);
+	padding: var(--sp-input-v) var(--sp-input-h);
+	font-family: var(--font-family);
+	transition: border-color var(--transition-base);
+	outline: none;
+}
+/* ---- フォーカス時ボーダーハイライト ---- */
+.input-field:focus {
+	border-color: var(--color-accent);
+}
+
+/*
+ * ============================================================
+ * 選択リスト
+ * ============================================================
+ */
+/* ---- 選択アイテム ---- */
+.list-item {
+	padding: var(--sp-list-item-v) var(--sp-list-item-h);
+	margin-bottom: var(--sp-list-item-mb);
+	cursor: pointer;
+	color: var(--color-text);
+	border: var(--border-field-width) solid transparent;
+	transition: background var(--transition-fast);
+	display: flex;
+	align-items: center;
+	gap: var(--gap-xs);
+}
+.list-item:hover {
+	background: var(--color-surface-sub);
+}
+.list-item.selected {
+	background: var(--color-success-bg);
+	border-color: var(--color-success-border-a);
+	color: var(--color-success);
+}
+/* ---- アイテム本文エリア(削除ボタンとの横並び) ---- */
+.list-item-content {
+	flex: 1;
+	min-width: 0;
+}
+/* ---- アイテム内複写ボタン ---- */
+.list-item-copy-btn {
+	flex-shrink: 0;
+	padding: var(--gap-xs);
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-text-faint);
+	border-radius: var(--radius-sm);
+	line-height: 0;
+	transition: color var(--transition-fast);
+}
+.list-item-copy-btn:hover {
+	color: var(--color-accent);
+}
+/* ---- アイテム内削除ボタン ---- */
+.list-item-delete-btn {
+	flex-shrink: 0;
+	padding: var(--gap-xxs);
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-text-faint);
+	border-radius: var(--radius-sm);
+	line-height: 0;
+	transition: color var(--transition-fast);
+}
+.list-item-delete-btn:hover {
+	color: var(--color-error);
+}
+.list-item-delete-btn:disabled {
+	display: none;
+}
+.list-item-delete-btn:disabled {
+	display: none;
+}
+/* ---- 新規作成 ---- */
+.list-item.new-item {
+	cursor: default;
+	background: var(--color-new-item-bg);
+	border-color: var(--color-new-item-border);
+	border-style: dashed;
+	border-width: var(--border-width);
+	color: var(--color-text);
+}
+
+/*
+ * ============================================================
+ * 選択アイテム内レイアウト(list-item-ali-*)
+ * ============================================================
+ */
+/* ---- 上段情報行 ---- */
+.list-item-ali-info {
+	display: flex;
+	align-items: center;
+	gap: var(--gap-xs);
+	flex-wrap: wrap;
+}
+/* ---- 主ラベル ---- */
+.list-item-ali-label {
+	font-weight: var(--fw-normal);
+	color: var(--color-text-heading);
+}
+/* ---- キャプション ---- */
+.list-item-ali-caption {
+	font-size: var(--fs-xs);
+	color: var(--color-text-muted);
+}
+/* ---- メタ情報行 ---- */
+.list-item-ali-meta {
+	font-size: var(--fs-xs);
+	color: var(--color-text-faint);
+	margin-top: var(--sp-list-item-ali-meta-t);
+	display: flex;
+	gap: var(--gap-xs);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+/* ---- メタ情報行内スパン ---- */
+.list-item-ali-meta span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+/* ---- リスト空状態メッセージ ---- */
+.list-item-ali-empty {
+	padding: var(--sp-list-item-ali-empty-v) var(--sp-list-item-ali-empty-h);
+}
+
+/*
+ * ============================================================
+ * フォーム
+ * ============================================================
+ */
+/* ---- スクロール可能フォームパネル ---- */
+.form-panel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	padding: var(--sp-form-v) var(--sp-form-h);
+	gap: var(--gap-normal);
+}
+/* ---- フォーム行(ラベル＋入力縦並び) ---- */
+.form-row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-form-row);
+}
+/* ---- チェックボックス行(横並び) ---- */
+.form-row-check {
+	flex-direction: row;
+	align-items: center;
+}
+/* ---- フィールドラベル ---- */
+.form-label {
+	font-size: var(--fs-small);
+	color: var(--color-text-muted);
+	font-weight: var(--fw-medium);
+}
+/* ---- セレクトカーソル ---- */
+.form-select {
+	cursor: pointer;
+}
+/* ---- テキストエリア(縦リサイズ可) ---- */
+.form-textarea {
+	resize: vertical;
+	line-height: var(--lh-loose);
+	padding: var(--sp-input-v) var(--sp-input-h);
+}
+/* ---- 読み取り専用入力フィールド ---- */
+.input-field-readonly {
+	background: var(--color-surface-sub);
+	color: var(--color-text-muted);
+	border: var(--border-width) solid var(--color-border);
+	padding: var(--sp-input-v) var(--sp-input-h);
+	font-family: var(--font-family);
+	cursor: default;
+	user-select: text;
+}
+.input-field-readonly:focus {
+	outline: none;
+}
+/* ---- disabled状態 ---- */
+.input-field:disabled {
+	background: var(--color-surface-sub);
+	color: var(--color-text-muted);
+	cursor: default;
+	opacity: 1;
+}
+.input-field:disabled:focus {
+	outline: none;
+	border-color: var(--color-border);
+}
+/* ---- チェックボックス＋ラベル横並び ---- */
+.form-check-label {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	font-size: var(--fs-small);
+	color: var(--color-text);
+	gap: var(--gap-check);
+}
+/* ---- disabled チェックボックス隣接テキストの非活性スタイル ---- */
+.form-check-label input:disabled + span {
+	color: var(--color-text-muted);
+	cursor: default;
+}
+/* ---- フォームセクションラベル ---- */
+.form-section-label {
+	font-size: var(--fs-normal);
+	font-weight: var(--fw-semibold);
+	color: var(--color-text);
+	text-transform: uppercase;
+	padding-top: var(--sp-card-v);
+	padding-bottom: var(--sp-list-item-mb);
+	border-bottom: var(--border-width) solid var(--color-border-sub);
+	margin-bottom: var(--gap-xs);
+}
+.form-section-label:first-child {
+	padding-top: 0;
+}
+/* ---- フォームラベル注記 ---- */
+.form-label-note {
+	font-size: var(--fs-xs);
+	color: var(--color-text-notice);
+	font-weight: var(--fw-normal);
+}
+/* ---- フォームヘッダー内の左グループ(タイトル＋注記) ---- */
+.form-header-leading {
+	display: flex;
+	align-items: center;
+	gap: var(--gap-sm);
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+}
+/* ---- フォームヘッダー内の警告注記 ---- */
+.form-header-note {
+	font-size: var(--fs-xs);
+	color: var(--color-warn);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/*
+ * ============================================================
+ * ボタンスタイル
+ * ============================================================
+ */
+/* ---- ボタン基底スタイル ---- */
+.btn {
+	padding: var(--sp-btn-sm-v) var(--sp-btn-sm-h);
+	border-radius: var(--radius-round);
+	font-size: var(--fs-btn);
+	font-weight: var(--fw-medium);
+	border: none;
+	cursor: pointer;
+	background: var(--color-btn-grey-bg);
+	color: var(--color-btn-grey-text);
+	transition: opacity var(--transition-base);
+	min-width: var(--w-btn-min);
+}
+/* ---- ホバー／アクティブ状態 ---- */
+.btn:hover {
+	opacity: var(--opacity-hover);
+}
+.btn:active {
+	opacity: var(--opacity-active);
+}
+/* ---- 無効状態 ---- */
+.btn:disabled {
+	background: var(--color-surface-sub);
+	color: var(--color-text-faint);
+	cursor: not-allowed;
+	opacity: 1;
+}
+/* ---- アイコンボタン(テキストなし・正方形) ---- */
+.btn-icon {
+	min-width: unset;
+	padding: var(--sp-btn-sm-v);
+	line-height: 0;
+	aspect-ratio: 1;
+	background: none;
+	color: var(--color-text-muted);
+}
+/* ---- ボタン横並び配置行 ---- */
+.btn-row {
+	display: flex;
+	gap: var(--gap-sm);
+	justify-content: flex-end;
+}

@@ -1,0 +1,435 @@
+/**
+ * エージェントコントローラーページスタイルシートです。<br>
+ *
+ * @author Kitagawa<br>
+ *
+ *<!--
+ * 更新日		更新者			更新内容
+ * 2026/04/30	Kitagawa		新規作成
+ *-->
+ */
+/*
+ * ============================================================
+ * オーナーカード
+ * ============================================================
+ */
+/* ---- オーナーカード基底スタイル ---- */
+.owner-card {
+	background: var(--color-surface);
+	border: var(--border-width) solid var(--color-idle-border-a);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	margin-bottom: var(--gap-normal);
+}
+/* ---- オーナーカードヘッダー ---- */
+.owner-card-header {
+	background: var(--color-surface-alt);
+	padding: var(--sp-card-v) var(--sp-card-h);
+	display: flex;
+	align-items: center;
+	gap: var(--gap-sm);
+	border-bottom: var(--border-width) solid var(--color-border);
+}
+/* ---- オーナーラベル ---- */
+.owner-label {
+	font-size: var(--fs-xs);
+	color: var(--color-text-muted);
+}
+/* ---- オーナーアバター(テーマ変数で色定義) ---- */
+.owner-avatar {
+	background: var(--theme-owner-avator);
+}
+/* ---- ボタン群(右寄せ) ---- */
+.owner-card-actions {
+	margin-left: auto;
+	display: flex;
+	gap: var(--gap-sm);
+}
+/* ---- 停止ボタン ---- */
+.owner-stop-btn {
+	background: var(--color-error-bg);
+	color: var(--color-error);
+	border: var(--border-width) solid var(--color-error-border-a);
+}
+/* ---- 発言履歴スクロール領域 ---- */
+.owner-history {
+	padding: var(--sp-body-v) var(--sp-body-h);
+	max-height: var(--h-card-owner-body);
+	min-height: var(--h-card-owner-body);
+	overflow-y: auto;
+	line-height: var(--lh-normal);
+	scroll-behavior: smooth;
+	border-bottom: var(--border-width) solid var(--color-border-sub);
+}
+.owner-history:empty {
+	display: none;
+}
+/* ---- プロンプト入力エリア ---- */
+.owner-input-body {
+	padding: var(--sp-body-v) var(--sp-body-h);
+}
+/* ---- プロンプト入力エリア ---- */
+.owner-prompt-textarea {
+	width: 100%;
+	min-height: 5em;
+	max-height: 22em;
+	resize: vertical;
+	font-family: var(--font-family);
+	font-size: var(--fs-small);
+	color: var(--color-text);
+	background: var(--color-bg);
+	border: var(--border-width) solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: 0.5em 0.75em;
+	line-height: var(--lh-loose);
+	box-sizing: border-box;
+}
+.owner-prompt-textarea:focus {
+	outline: none;
+	border-color: var(--color-link);
+}
+.owner-prompt-textarea:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+	resize: none;
+}
+
+/*
+ * ============================================================
+ * エージェントグリッド
+ * ============================================================
+ */
+/* ---- 複数列レスポンシブグリッド ---- */
+#agents-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(var(--w-min-grid-col), 1fr));
+	gap: var(--gap-normal);
+	align-items: start;
+}
+
+/*
+ * ============================================================
+ * エージェントカード
+ * ============================================================
+ */
+/* ---- エージェントカード基底スタイル ---- */
+.agent-card {
+	background: var(--color-surface);
+	border: var(--border-width) solid var(--color-idle-border-a);
+	border-radius: var(--radius-lg);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	transition:
+		border-color var(--transition-slow),
+		box-shadow var(--transition-slow);
+}
+/* ---- カード状態: 処理中 ---- */
+.agent-card.is-processing {
+	border-color: var(--color-card-processing);
+}
+/* ---- カード状態: 完了 ---- */
+.agent-card.is-done {
+	border-color: var(--color-card-done);
+}
+/* ---- カード状態: エラー ---- */
+.agent-card.is-error {
+	border-color: var(--color-card-error);
+}
+
+/*
+ * ============================================================
+ * カードヘッダー
+ * ============================================================
+ */
+/* ---- エージェント名・ドット・モデル横並び ---- */
+.card-header {
+	background: var(--color-surface-alt);
+	padding: var(--sp-card-v) var(--sp-card-h);
+	display: flex;
+	align-items: center;
+	gap: var(--gap-sm);
+	border-bottom: var(--border-width) solid var(--color-border);
+}
+/* ---- エージェントアバター(丸アイコン) ---- */
+.card-avatar {
+	width: 2.2em;
+	height: 2.2em;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--fs-xs);
+	font-weight: var(--fw-semibold);
+	color: #fff;
+	flex-shrink: 0;
+	user-select: none;
+}
+/* ---- エージェント名テキスト ---- */
+.agent-name {
+	font-weight: var(--fw-semibold);
+	font-size: var(--fs-normal);
+	color: var(--color-text-heading);
+}
+/* ---- タイプ・モデルメタ情報領域 ---- */
+.agent-meta {
+	margin-left: auto;
+	text-align: right;
+	font-size: var(--fs-xs);
+	line-height: 1.5em;
+}
+/* ---- エージェントタイプ表示 ---- */
+.meta-type {
+	color: var(--color-text-muted);
+}
+/* ---- モデル名表示 ---- */
+.meta-model {
+	color: var(--color-text-subtle);
+}
+
+/*
+ * ============================================================
+ * カードコンテンツ
+ * ============================================================
+ */
+/* ---- ストリーミングテキストスクロール領域 ---- */
+.card-body {
+	padding: var(--sp-body-v) var(--sp-body-h);
+	min-height: var(--h-card-body);
+	max-height: var(--h-card-body);
+	overflow-y: auto;
+	line-height: var(--lh-normal);
+	scroll-behavior: smooth;
+}
+/* ---- エージェント未起動時表示プレースホルダー ---- */
+.idle-placeholder {
+	color: var(--color-text-faint);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 3.85em;
+	font-size: var(--fs-small);
+}
+
+/*
+ * ============================================================
+ * ターンブロック
+ * ============================================================
+ */
+/* ---- ターンブロック ---- */
+.turn-block {
+	background: var(--color-bg);
+	border-radius: var(--radius-md);
+	padding: 0.55em 0.7em;
+	margin-bottom: var(--gap-xs);
+}
+.turn-block:last-child {
+	margin-bottom: 0;
+}
+/* ---- ターン番号・タイムスタンプ行 ---- */
+.turn-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	font-size: var(--fs-xs);
+	color: var(--color-text-subtle);
+	margin-bottom: 0.5em;
+	padding-bottom: 0.3em;
+	border-bottom: var(--border-width) solid var(--color-border-sub);
+}
+/* ---- ターン番号バッジ ---- */
+.turn-num {
+	background: var(--color-surface-sub);
+	padding: 0.06em 0.4em;
+	border-radius: var(--radius-sm);
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * ============================================================
+ * Markdownレンダリング領域
+ * ============================================================
+ */
+/* ---- Markdownコンテンツ ---- */
+.turn-text {
+	font-size: var(--fs-small);
+	color: var(--color-text);
+	word-break: break-word;
+}
+/* ---- ストリーミングカーソル点滅 ---- */
+.turn-text.streaming::after {
+	content: "▋";
+	color: var(--color-link);
+	animation: cursor-blink var(--anim-cursor-blink) step-end infinite;
+	font-size: 0.85em;
+}
+/* ---- カーソル点滅アニメーション ---- */
+@keyframes cursor-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+/* ---- Markdown見出し(共通) ---- */
+.turn-text h1,
+.turn-text h2,
+.turn-text h3,
+.turn-text h4 {
+	color: var(--color-text-heading);
+	font-weight: var(--fw-semibold);
+	line-height: var(--lh-normal);
+	margin: 0.6em 0 0.3em;
+}
+/* ---- 見出しレベル別フォントサイズ ---- */
+.turn-text h1 {
+	font-size: 1.15em;
+}
+.turn-text h2 {
+	font-size: 1.05em;
+}
+.turn-text h3,
+.turn-text h4 {
+	font-size: 0.97em;
+}
+/* ---- Markdown段落 ---- */
+.turn-text p {
+	margin: 0.25em 0;
+}
+/* ---- Markdownリスト ---- */
+.turn-text ul,
+.turn-text ol {
+	padding-left: 2em;
+	margin: 0.25em 0;
+}
+/* ---- リストアイテム ---- */
+.turn-text li {
+	margin: 0.125em 0;
+}
+/* ---- Markdownインラインコード ---- */
+.turn-text code {
+	font-family: var(--font-family-code);
+	background: var(--color-surface-sub);
+	padding: 0.06em 0.3em;
+	border-radius: var(--radius-sm);
+	color: var(--color-text-heading);
+}
+/* ---- Markdownコードブロック ---- */
+.turn-text pre {
+	background: var(--color-bg);
+	border: var(--border-width) solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: 0.6em 0.75em;
+	overflow-x: auto;
+	margin: 0.45em 0;
+}
+/* ---- コードブロック内コードリセット ---- */
+.turn-text pre code {
+	background: none;
+	padding: 0;
+	color: var(--color-text);
+	font-size: var(--fs-small);
+}
+/* ---- Markdown引用ブロック ---- */
+.turn-text blockquote {
+	border-left: 0.2em solid var(--color-border);
+	padding-left: 0.6em;
+	color: var(--color-text-muted);
+	margin: 0.3em 0;
+}
+/* ---- Markdownリンク ---- */
+.turn-text a {
+	color: var(--color-link);
+	text-decoration: none;
+}
+.turn-text a:hover {
+	text-decoration: underline;
+}
+/* ---- Markdown太字 ---- */
+.turn-text strong {
+	color: var(--color-text-heading);
+	font-weight: var(--fw-semibold);
+}
+/* ---- Markdown斜体 ---- */
+.turn-text em {
+	font-style: italic;
+}
+/* ---- Markdownテーブル ---- */
+.turn-text table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 0.45em 0;
+	font-size: var(--fs-small);
+}
+/* ---- テーブルセル ---- */
+.turn-text th,
+.turn-text td {
+	border: var(--border-width) solid var(--color-border);
+	padding: 0.25em 0.55em;
+}
+/* ---- テーブルヘッダーセル ---- */
+.turn-text th {
+	background: var(--color-surface-sub);
+	color: var(--color-text-heading);
+	text-align: left;
+}
+/* ---- Markdown水平線 ---- */
+.turn-text hr {
+	border: none;
+	border-top: var(--border-width) solid var(--color-border);
+	margin: 0.55em 0;
+}
+
+/*
+ * ============================================================
+ * カードエラー・メッセージ・フッター
+ * ============================================================
+ */
+/* ---- エラーイベント表示 ---- */
+.turn-error {
+	color: var(--color-error);
+	font-size: var(--fs-small);
+	margin-top: 0.45em;
+	padding: 0.45em 0.7em;
+	background: var(--color-error-bg);
+	border: var(--border-width) solid var(--color-error-border-a);
+	border-radius: var(--radius-sm);
+}
+/* ---- 一般メッセージ表示エリア ---- */
+.card-message {
+	padding: 0.5em var(--sp-card-h);
+	background: var(--color-surface-alt);
+	border-top: var(--border-width) solid var(--color-border-sub);
+	color: var(--color-text-muted);
+	font-size: var(--fs-small);
+	line-height: var(--lh-normal);
+	white-space: pre-wrap;
+	word-break: break-word;
+	height: 4.5em;
+	overflow-y: auto;
+}
+/* ---- カード下部情報バー ---- */
+.card-footer {
+	padding: var(--sp-footer-v) var(--sp-footer-h);
+	background: var(--color-bg);
+	border-top: var(--border-width) solid var(--color-border-sub);
+	font-size: var(--fs-xs);
+	color: var(--color-text-subtle);
+	display: flex;
+	gap: var(--gap-normal);
+	align-items: center;
+	min-height: 1.625em;
+}
+/* ---- セッションID(右端・省略表示) ---- */
+.footer-session {
+	margin-left: auto;
+	font-family: var(--font-family);
+	font-size: var(--fs-small);
+	color: var(--color-text-faint);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 60%;
+}

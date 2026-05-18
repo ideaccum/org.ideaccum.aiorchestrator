@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/**
+ * ロギング定義ファイル(開発時用)<br>
+ * 
+ * @author Kitagawa<br>
+ * 
+ * 更新日		更新者			更新内容
+ * 2012/06/30	Kitagawa		新規作成
+ */
+-->
+<!-- <configuration scan="true" scanPeriod="30 minutes"> -->
+<configuration>
+
+	<appender name="DEBUG_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>logs/application.log</file>
+		<append>true</append>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>logs/application-%d{yyyyMMdd}.log</fileNamePattern>
+		</rollingPolicy>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<charset>UTF-8</charset>
+			<pattern>%date{yyyy-MM-dd HH:mm:ss, Asia/Tokyo} |-%-5level %logger.%method\(%file:%line\) - %msg%n%exception</pattern>
+			<!-- <pattern>%date{yyyy-MM-dd HH:mm:ss, Asia/Tokyo} |-%-5level - %m%n</pattern> -->
+		</encoder>
+	</appender>
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<target>System.out</target>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<charset>UTF-8</charset>
+			<pattern>%date{yyyy-MM-dd HH:mm:ss, Asia/Tokyo} |-%-5level %logger.%method\(%file:%line\) - %msg%n%exception</pattern>
+		</encoder>
+	</appender>
+
+	<logger name="org.ideaccum">
+		<level value="DEBUG" />
+		<appender-ref ref="STDOUT" />
+		<appender-ref ref="DEBUG_LOG" />
+	</logger>
+
+</configuration>

@@ -1,0 +1,9 @@
+.svn
+.classpath
+.project
+.settings/
+/target
+/config
+/repos
+/logs
+aiorch.jar

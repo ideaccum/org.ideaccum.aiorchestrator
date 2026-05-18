@@ -1,0 +1,160 @@
+/**
+ * ログビューページスタイルシートです。<br>
+ *
+ * @author Kitagawa<br>
+ *
+ *<!--
+ * 更新日		更新者			更新内容
+ * 2026/05/15	Kitagawa		新規作成
+ *-->
+ */
+/*
+ * ============================================================
+ * ログレイアウトコンポーネント
+ * ============================================================
+ */
+/* ---- ログエントリーコンテナ ---- */
+.log-entries {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap);
+	padding: var(--sp-form-v) var(--sp-form-h);
+}
+/* ---- 空状態 ---- */
+.log-empty {
+	padding: var(--sp-ali-empty-v) var(--sp-ali-empty-h);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+/* ---- 会話ターンカード(グリッドレイアウト) ---- */
+/* アバター列(固定幅) | コンテンツ列(可変) の2列グリッド */
+.log-turn {
+	display: grid;
+	grid-template-columns: 2.2em 1fr;
+	column-gap: var(--gap-sm);
+	row-gap: var(--gap-xs);
+	margin-bottom: 1.5em;
+}
+/* ---- エージェントアバター(丸アイコン) 行2・列1 / パネル上端揃え ---- */
+.log-turn-avatar {
+	margin-top: 0.5em;
+	grid-column: 1;
+	grid-row: 2;
+	align-self: start;
+	width: 2.3em;
+	height: 2.3em;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--fs-normal);
+	font-weight: var(--fw-semibold);
+	color: #fff;
+	user-select: none;
+}
+/* ---- タイトル行(エージェント名＋タイムスタンプ) 行1・列2 ---- */
+.log-turn-title {
+	padding-left: 0.4em;
+	grid-column: 2;
+	grid-row: 1;
+	display: flex;
+	align-items: baseline;
+	gap: var(--gap-sm);
+	flex-wrap: wrap;
+}
+/* ---- エージェント名 ---- */
+.log-agent-name {
+	font-size: var(--fs-small);
+	font-weight: var(--fw-semibold);
+	color: var(--color-text-heading);
+}
+/* ---- タイムスタンプ ---- */
+.log-turn-timestamp {
+	font-size: var(--fs-xs);
+	color: var(--color-text-muted);
+}
+/* ---- トークン情報 行3・列2 ---- */
+.log-turn-tokens {
+	padding-left: 0.5em;
+	grid-column: 2;
+	grid-row: 3;
+	font-size: var(--fs-xs);
+	color: var(--color-text-muted);
+}
+/* ---- ターン本文 行2・列2 ---- */
+.log-turn-body {
+	grid-column: 2;
+	grid-row: 2;
+	padding: var(--sp-form-v) var(--sp-card-h);
+	font-size: var(--fs-small);
+	line-height: var(--lh-loose);
+	color: var(--color-text);
+	overflow-x: auto;
+	background: var(--color-surface);
+	border: var(--border-width) solid var(--color-border);
+	border-radius: var(--radius-lg);
+}
+/* ---- オーナーエントリアバター(!importantでJSインラインスタイルを上書き) ---- */
+.log-turn.is-owner .log-turn-avatar {
+	background: var(--theme-owner-avator) !important;
+}
+/* ---- オーナーエントリ本文(背景色変更) ---- */
+.log-turn.is-owner .log-turn-body {
+	background: var(--color-notice-bg);
+	border-color: var(--color-notice-border-a);
+}
+/* ---- Markdown 要素スタイル ---- */
+.log-turn-body p { margin-bottom: 0.6em; }
+.log-turn-body p:last-child { margin-bottom: 0; }
+.log-turn-body pre {
+	background: var(--color-surface-sub);
+	border-radius: var(--radius-md);
+	padding: var(--sp-card-v) var(--sp-card-h);
+	overflow-x: auto;
+	font-family: var(--font-family-code);
+	font-size: var(--fs-xs);
+	margin-bottom: 0.6em;
+}
+.log-turn-body code {
+	font-family: var(--font-family-code);
+	background: var(--color-surface-sub);
+	border-radius: var(--radius-sm);
+	padding: 0.1em 0.3em;
+	font-size: 0.9em;
+}
+.log-turn-body pre code {
+	background: none;
+	padding: 0;
+}
+.log-turn-body ul, .log-turn-body ol {
+	padding-left: 1.5em;
+	margin-bottom: 0.6em;
+}
+.log-turn-body h1, .log-turn-body h2, .log-turn-body h3 {
+	margin-bottom: 0.4em;
+	color: var(--color-text-heading);
+}
+/* ---- Markdownテーブル ---- */
+.log-turn-body table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 0.45em 0;
+	font-size: var(--fs-small);
+}
+.log-turn-body th,
+.log-turn-body td {
+	border: var(--border-width) solid var(--color-border);
+	padding: 0.25em 0.55em;
+}
+.log-turn-body th {
+	background: var(--color-surface-sub);
+	color: var(--color-text-heading);
+	text-align: left;
+}
+/* ---- Markdown水平線 ---- */
+.log-turn-body hr {
+	border: none;
+	border-top: var(--border-width) solid var(--color-border);
+	margin: 0.55em 0;
+}

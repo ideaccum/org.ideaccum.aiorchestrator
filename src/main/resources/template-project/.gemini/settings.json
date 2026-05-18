@@ -1,0 +1,24 @@
+{
+	"general": {
+		"defaultApprovalMode": "auto_edit",
+		"enableAutoUpdate": false,
+		"enableAutoUpdateNotification": false,
+		"sessionRetention": {
+			"enabled": false
+		}
+	},
+	"privacy": {
+		"usageStatisticsEnabled": false
+	},
+	"billing": {
+		"overageStrategy": "never"
+	},
+	"security": {
+		"auth": {
+			"selectedType": "oauth-personal"
+		}
+	},
+	"ui": {
+		"showCompatibilityWarnings": false
+	}
+}

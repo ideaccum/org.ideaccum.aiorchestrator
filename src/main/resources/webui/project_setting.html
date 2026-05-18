@@ -1,0 +1,138 @@
+<!--
+/**
+ * プロジェクト設定ページです。<br>
+ *
+ * @author Kitagawa<br>
+ *
+ *#!--
+ * 更新日		更新者			更新内容
+ * 2026/05/01	Kitagawa		新規作成
+ *--#
+ */
+-->
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Multi Agent Controller</title>
+		<link rel="icon" href="image/favicon.ico" type="image/x-icon" />
+		<link rel="stylesheet" href="css/theme.css" />
+		<link rel="stylesheet" href="css/common.css" />
+		<link rel="stylesheet" href="css/layout.css" />
+		<link rel="stylesheet" href="project_setting.css" />
+	</head>
+	<body>
+		<!-- ブートオーバーレイ(初期化完了まで表示) -->
+		<div id="boot-overlay" class="boot-overlay">
+			<div class="loading-spinner"></div>
+		</div>
+
+		<!-- ヘッダー -->
+		<div class="header">
+			<span class="header-title">Multi Agent Controller</span>
+		</div>
+
+		<!-- ノーティスバー -->
+		<div id="page-notice" class="page-notice">
+			<div id="notice-spinner" class="loading-spinner"></div>
+			<span id="notice-text"></span>
+		</div>
+
+		<!-- 切断状態パネル -->
+		<div class="disconnected-panel">
+			<div class="loading-spinner"></div>
+			<span>サーバーとの接続が切断されました<br />再接続を待機しています</span>
+		</div>
+
+		<!-- エラー表示パネル -->
+		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<!-- 警告メッセージパネル -->
+		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<!-- 情報メッセージパネル -->
+		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+
+		<!-- タブバー -->
+		<div class="tab-bar">
+			<a href="/webui/project_setting.html" class="tab-item tab-active">プロジェクト</a>
+			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
+			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
+			<a href="/webui/log_view.html" class="tab-item tab-requires-project">ログ</a>
+			<a href="/webui/config_setting.html" class="tab-item">設定</a>
+			<span id="header-project-name" class="tab-project-name"></span>
+		</div>
+
+		<!-- メインコンテンツ(左右分割パネル) -->
+		<div class="split-layout">
+			<!-- 左パネル(プロジェクト一覧) -->
+			<div class="split-left">
+				<div class="split-left-header">
+					<span class="split-left-title">プロジェクト一覧</span>
+					<button id="btn-new" class="btn btn-icon btn-primary" title="追加">
+						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+							<polyline points="14 2 14 8 20 8"></polyline>
+							<line x1="12" y1="18" x2="12" y2="12"></line>
+							<line x1="9" y1="15" x2="15" y2="15"></line>
+						</svg>
+					</button>
+				</div>
+				<div id="project-list" class="split-left-body scrollbar-thin"></div>
+			</div>
+
+			<!-- 右パネル -->
+			<div class="split-right">
+				<!-- 未選択状態 -->
+				<div id="project-detail-empty" class="split-empty">
+					<div class="empty-msg">プロジェクトを選択してください。</div>
+				</div>
+
+				<!-- 右ペインヘッダー -->
+				<div id="project-form-header" class="split-right-header" style="display: none">
+					<div class="btn-row">
+						<button id="btn-select-project" type="button" class="btn btn-run">選択</button>
+					</div>
+					<div class="btn-row">
+						<button id="btn-save-project" type="button" class="btn btn-primary">保存</button>
+					</div>
+				</div>
+
+				<!-- 設定フォーム -->
+				<div id="project-detail-panel" class="form-panel scrollbar-thin" style="display: none">
+					<div id="page-message-error" class="page-message-error" style="display: none"></div>
+					<div class="form-row">
+						<label class="form-label" for="project-name-input">プロジェクト名</label>
+						<span id="project-detail-name" class="input-field-readonly" style="display: none"></span>
+						<input id="project-name-input" class="input-field" type="text" placeholder="プロジェクト名を入力..." style="display: none" maxlength="32" />
+					</div>
+					<div class="form-row">
+						<label class="form-label" for="project-title-input">タイトル</label>
+						<input id="project-title-input" class="input-field" type="text" placeholder="表示タイトルを入力..." maxlength="80" />
+					</div>
+					<div id="form-row-agent-template" class="form-row" style="display: none">
+						<label class="form-label" for="project-agent-template-input">エージェントテンプレート</label>
+						<select id="project-agent-template-input" class="input-field form-select">
+							<option value="">(テンプレートなし)</option>
+							<option value="light_claude">単純タスク向け(Claude)</option>
+							<option value="light_codex">単純タスク向け(Codex)</option>
+							<option value="light_gemini">単純タスク向け(Gemini)</option>
+							<option value="fullstack">精密タスク向け</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ページスクリプト -->
+		<script src="lib/marked/marked-12.0.2.min.js"></script>
+		<script src="js/constants.js"></script>
+		<script src="js/utils.js"></script>
+		<script src="js/webapi.js"></script>
+		<script src="js/content.js"></script>
+		<script src="js/header.js"></script>
+		<script src="project_setting.js"></script>
+		<script>
+			Promise.all([new ContentController().init(), new HeaderController().init(), new ProjectSettingController().init()]).finally(() => Utils.hideBootOverlay());
+		</script>
+	</body>
+</html>

@@ -1,0 +1,319 @@
+package org.ideaccum.ai.orchestrator.agents;
+
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.ideaccum.ai.orchestrator.agent.AgentConfig;
+import org.ideaccum.ai.orchestrator.context.Context;
+import org.ideaccum.ai.orchestrator.context.TokenUsage;
+import org.ideaccum.ai.orchestrator.util.StringUtils;
+
+import tools.jackson.databind.JsonNode;
+
+/**
+ * Gemini CLI を子プロセスとして実行するエージェントクラスです。<br>
+ * <p>
+ * Gemini CLI 固有の起動引数・出力解析設定を定数として保持します。<br>
+ * エージェントクラスインスタンスはセッションごとに単一のインスタンスを想定したクラス設計になっています。<br>
+ * </p>
+ *
+ * @author Kitagawa<br>
+ *
+ *<!--
+ * 更新日		更新者		更新内容
+ * 2026/03/31	Kitagawa	新規作成
+ *-->
+ */
+public class GeminiCliAgent extends AbstractCliAgent {
+
+	/** チャンク継続状態フラグ */
+	private boolean deltaStatus;
+
+	/**
+	 * コンストラクタ<br>
+	 * @param context アプリケーションコンテキスト
+	 * @param agentConfig エージェント設定情報
+	 */
+	public GeminiCliAgent(Context context, AgentConfig agentConfig) {
+		super(context, agentConfig);
+		this.deltaStatus = false;
+	}
+
+	/**
+	 * コマンド実行時の環境変数マップを生成します。<br>
+	 * @return コマンド実行時の環境変数マップ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#buildEnvironmentMap()
+	 */
+	@Override
+	protected Map<String, String> buildEnvironmentMap() {
+		Map<String, String> env = new HashMap<>();
+		//env.put("GEMINI_CLI_HOME", "./");
+		return env;
+	}
+
+	/**
+	 * CLI起動時引数を返します。<br>
+	 * @param sessionId セッションID(セッション継続起動時は非null、初回起動時はnull)
+	 * @return CLI起動時引数
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#buildStartupCommandArgs(java.lang.String)
+	 */
+	@Override
+	protected List<String> buildStartupCommandArgs(String sessionId) {
+		List<String> list = new ArrayList<>();
+		// エージェントモデル指定
+		if (getModel() != null && !getModel().isBlank()) {
+			list.add("--model");
+			list.add(getModel());
+		}
+
+		// プリントモード時の出力形式(text、json、stream-json)
+		list.add("--output-format");
+		list.add("stream-json");
+
+		// セッション再開
+		if (sessionId != null && !sessionId.isBlank()) {
+			list.add("--resume");
+			list.add(sessionId);
+		}
+
+		// 新規セッション指定
+		// Gemini CLI はセッションID指定による新規開始強制をサポートしない
+
+		return list;
+	}
+
+	/**
+	 * コマンド実行時の準備処理を行います。<br>
+	 * @throws Throwable 準備処理で予期せぬエラーが発生した場合にスローされます
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#prepare()
+	 */
+	@Override
+	protected void prepare() throws Throwable {
+		Files.createDirectories(getContext().getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".gemini"));
+	}
+
+	/**
+	 * エージェントからの実行進捗レスポンスを抽出します。<br>
+	 * @param response エージェントレスポンス
+	 * @return 実行進捗メッセージ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupProgress(java.lang.String)
+	 */
+	protected String lookupProgress(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		String result = null;
+		try {
+			if (response.startsWith("Loaded cached credentials")) {
+				result = "認証キャッシュをロードしました。";
+			}
+			if (response.startsWith("Ripgrep is not available")) {
+				result = "Ripgrepツールが存在しません(インストールを推奨します)。";
+			}
+			if (response.indexOf("You have exhausted your capacity on this model") >= 0) {
+				Matcher matcher = Pattern.compile(".*Retrying after ([0-9]+ms).*").matcher(response);
+				if (matcher.find()) {
+					result = "リクエストキャパシティ超過のため、処理を待機します(" + matcher.group(1) + ")。";
+				} else {
+					result = "リクエストキャパシティ超過のため、処理を待機します。";
+				}
+			}
+
+			if (!StringUtils.isJSON(response)) {
+				return result;
+			}
+
+			if(response.indexOf("tool_use")>=0) {
+				System.out.println("***");
+			}
+			
+			JsonNode node = MAPPER.readTree(response);
+			String type = node.path("type").asString();
+
+			if ("init".equals(type)) {
+				result = "モデルの初期化中です。";
+			}
+			if ("message".equals(type)) {
+				if ("user".equals(node.path("role").asString())) {
+					result = "プロンプトを受け付けしました。";
+				}
+				if ("assistant".equals(node.path("role").asString())) {
+					result = "プロンプト実行結果をレスポンス中。";
+				}
+			}
+			if ("tool_use".equals(type)) {
+				if ("update_topic".equals(node.path("tool_name").asString())) {
+					result = "トピック更新 : " + node.path("parameters").path("title").asString();
+				}
+				if ("enter_plan_mode".equals(node.path("tool_name").asString())) {
+					result = "プランモードでの実行に切り替えます。";
+				}
+				if ("exit_plan_mode".equals(node.path("tool_name").asString())) {
+					result = "プランモードでの実行を終了します。";
+				}
+				if ("grep_serach".equals(node.path("tool_name").asString())) {
+					result = "Grep検索 : " + node.path("parameters").path("pattern").asString();
+				}
+				if ("read_file".equals(node.path("tool_name").asString())) {
+					result = "ファイル読み込み : " + node.path("parameters").path("file_path").asString();
+				}
+				if ("wrtite_file".equals(node.path("tool_name").asString())) {
+					result = "ファイル書き込み : " + node.path("parameters").path("file_path").asString();
+				}
+				if ("list_directory".equals(node.path("tool_name").asString())) {
+					result = "ディレクトリ取得 : " + node.path("parameters").path("dir_path").asString();
+				}
+				if ("google_web_search".equals(node.path("tool_name").asString())) {
+					result = "Web検索 : " + node.path("parameters").path("query").asString();
+				}
+			}
+			if ("tool_result".equals(type)) {
+				result = "ツール結果 : " + node.path("output").asString();
+			}
+			if ("result".equals(type)) {
+				result = "処理が完了しました。";
+			}
+
+			// メッセージフック漏れ確認用エラーコンソール出力
+			if (result == null) {
+				System.err.println("[WARN] " + node.toString());
+				result = node.toString();
+			}
+
+			return result;
+		} catch (Throwable e) {
+			System.err.println("[ERROR] " + response);
+			return response;
+		}
+	}
+
+	/**
+	 * エージェントレスポンスからセッションIDを抽出します。<br>
+	 * @param response エージェントレスポンス
+	 * @return セッションID(取得できなかった場合はnullを返却)
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupSessionId(java.lang.String)
+	 */
+	@Override
+	protected String lookupSessionId(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		try {
+			JsonNode node = MAPPER.readTree(response);
+
+			// content内容を取得
+			String result = node.path("session_id").asString().trim();
+
+			return result;
+		} catch (Throwable e) {
+			return null;
+		}
+	}
+
+	/**
+	 * エージェントレスポンスからコンテンツ内容を抽出します。<br>
+	 * @param response エージェントレスポンス
+	 * @return コンテンツ内容(取得できなかった場合はnullを返却)
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupContent(java.lang.String)
+	 */
+	@Override
+	protected String lookupContent(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		try {
+			JsonNode node = MAPPER.readTree(response);
+
+			// typeがmessage以外は解析スキップ
+			if (!"message".equals(node.path("type").asString())) {
+				if (deltaStatus) {
+					deltaStatus = false;
+					return "\n";
+				}
+				return null;
+			}
+
+			// roleがassistant以外は解析スキップ
+			if (!"assistant".equals(node.path("role").asString())) {
+				if (deltaStatus) {
+					deltaStatus = false;
+					return "\n";
+				}
+				return null;
+			}
+
+			// content内容を取得
+			String result = node.path("content").asString();
+
+			if (result != null && !result.isEmpty()) {
+				// deltaがfalseの場合は改行追加
+				if (!node.path("delta").asBoolean()) {
+					deltaStatus = false;
+					return result = result + "\n";
+				} else {
+					deltaStatus = true;
+					return result;
+				}
+			} else {
+				if (deltaStatus) {
+					deltaStatus = false;
+					return "\n";
+				}
+				return null;
+			}
+		} catch (Throwable e) {
+			if (deltaStatus) {
+				deltaStatus = false;
+				return "\n";
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * エージェントレスポンスからトークン使用量を抽出します。<br>
+	 * @param response エージェントレスポンス
+	 * @return トークン使用量(取得できなかった場合はnullを返却)
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupUsage(java.lang.String)
+	 */
+	@Override
+	protected TokenUsage lookupUsage(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		try {
+			JsonNode node = MAPPER.readTree(response);
+
+			// typeがresult以外は解析スキップ
+			if (!"result".equals(node.path("type").asString())) {
+				return null;
+			}
+
+			// トークンノードがない場合はスキップ
+			if (false //
+					|| node.path("stats").path("input_tokens").isMissingNode() //
+					|| node.path("stats").path("output_tokens").isMissingNode() //
+					|| node.path("stats").path("total_tokens").isMissingNode() //
+			) {
+				return null;
+			}
+
+			// トークン情報取得
+			long inputToken = node.path("stats").path("input_tokens").asLong();
+			long outputToken = node.path("stats").path("output_tokens").asLong();
+			long totalToken = node.path("stats").path("total_tokens").asLong();
+			long otherToken = totalToken - inputToken - outputToken;
+
+			TokenUsage result = new TokenUsage(inputToken, outputToken, otherToken);
+
+			return result;
+		} catch (Throwable e) {
+			return null;
+		}
+	}
+}

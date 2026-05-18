@@ -1,0 +1,15 @@
+model_context_window = 1000000
+
+approval_policy = "on-request"
+
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = ["./"]
+network_access = true
+
+[analytics]
+enabled = false
+
+[feedback]
+enabled = false

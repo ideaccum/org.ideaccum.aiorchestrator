@@ -1,0 +1,99 @@
+<!--
+/**
+ * ログビューページです。<br>
+ *
+ * @author Kitagawa<br>
+ *
+ *#!--
+ * 更新日		更新者			更新内容
+ * 2026/05/15	Kitagawa		新規作成
+ *--#
+ */
+-->
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Multi Agent Controller</title>
+		<link rel="icon" href="image/favicon.ico" type="image/x-icon" />
+		<link rel="stylesheet" href="css/theme.css" />
+		<link rel="stylesheet" href="css/common.css" />
+		<link rel="stylesheet" href="css/layout.css" />
+		<link rel="stylesheet" href="log_view.css" />
+	</head>
+	<body>
+		<!-- ブートオーバーレイ(初期化完了まで表示) -->
+		<div id="boot-overlay" class="boot-overlay">
+			<div class="loading-spinner"></div>
+		</div>
+
+		<!-- ヘッダー -->
+		<div class="header">
+			<span class="header-title">Multi Agent Controller</span>
+		</div>
+
+		<!-- ノーティスバー -->
+		<div id="page-notice" class="page-notice">
+			<div id="notice-spinner" class="loading-spinner"></div>
+			<span id="notice-text"></span>
+		</div>
+
+		<!-- 切断状態パネル -->
+		<div class="disconnected-panel">
+			<div class="loading-spinner"></div>
+			<span>サーバーとの接続が切断されました<br>再接続を待機しています</span>
+		</div>
+
+		<!-- エラー表示パネル -->
+		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<!-- 警告メッセージパネル -->
+		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<!-- 情報メッセージパネル -->
+		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+
+		<!-- タブバー -->
+		<div class="tab-bar">
+			<a href="/webui/project_setting.html" class="tab-item">プロジェクト</a>
+			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
+			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
+			<a href="/webui/log_view.html" class="tab-item tab-requires-project tab-active">ログ</a>
+			<a href="/webui/config_setting.html" class="tab-item">設定</a>
+			<span id="header-project-name" class="tab-project-name"></span>
+		</div>
+
+		<!-- ページヘッダー(更新ボタン) -->
+		<div class="split-right-header">
+			<span class="split-right-title"></span>
+			<div class="btn-row">
+				<button id="btn-refresh" type="button" class="btn btn-icon" title="更新"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
+			</div>
+		</div>
+
+		<!-- メインコンテンツ -->
+		<div class="main scrollbar-thin">
+			<div class="single-layout">
+				<div id="log-empty" class="log-empty" style="display: none">
+					<div class="empty-msg">会話ログがありません。</div>
+				</div>
+				<div id="log-entries"></div>
+			</div>
+		</div>
+
+		<!-- ページスクリプト -->
+		<script src="lib/marked/marked-12.0.2.min.js"></script>
+		<script src="js/constants.js"></script>
+		<script src="js/utils.js"></script>
+		<script src="js/webapi.js"></script>
+		<script src="js/content.js"></script>
+		<script src="js/header.js"></script>
+		<script src="log_view.js"></script>
+		<script>
+			Promise.all([
+				new ContentController().init(),
+				new HeaderController().init(),
+				new LogViewController().init(),
+			]).finally(() => Utils.hideBootOverlay());
+		</script>
+	</body>
+</html>

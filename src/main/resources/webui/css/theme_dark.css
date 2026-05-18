@@ -1,0 +1,40 @@
+/**
+ * ページテーマ関連のスタイルシートです。<br>
+ * <p>
+ * ページ全体のテーマカラーのスタイル変数を提供します。<br>
+ * これらの変数はsize.cssで定義されているサイズ関連のスタイルと組み合わせて使用され、ページ全体の統一された外観を実現します。<br>
+ * </p>
+ *
+ * @author Kitagawa<br>
+ *
+ *<!--
+ * 更新日		更新者			更新内容
+ * 2026/05/01	Kitagawa		新規作成
+ *-->
+ */
+/*
+ * ============================================================
+ * CSS カスタムプロパティ
+ * ============================================================
+ */
+:root {
+	/* ---- テーマカラー ---- */
+	--theme-bg: #060606;
+	--theme-text: #e6edf3;
+	--theme-text-sub: #8b949e;
+	--theme-surface1: #414141;
+	--theme-surface2: #313131;
+	--theme-surface3: #202020;
+	--theme-surface4: #151515;
+	--theme-accent1: #3f88b9;
+	--theme-accent1-bg: #0f1d33;
+	--theme-accent2: #f85149;
+	--theme-accent2-bg: #2d1419;
+	--theme-accent3: #22d231;
+	--theme-accent3-bg: #0f331e;
+	--theme-accent4: #d29922;
+	--theme-accent4-bg: #271f10;
+	--theme-accent5: #8d8d8d;
+	--theme-accent5-bg: #3d3d3d;
+	--theme-owner-avator: #607d8b;
+}

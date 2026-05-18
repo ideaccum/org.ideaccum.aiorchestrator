@@ -1,0 +1,33 @@
+{
+	"language": "japanese",
+	"permissions": {
+		"defaultMode": "bypassPermissions",
+		"allow": [
+			"Bash(*)",
+			"Read(./**)",
+			"Edit(./**)",
+			"WebFetch(*)"
+		],
+		"deny": [
+			"FileUpload(*)",
+			"FileDownload(*)"
+		]
+	},
+	"allowedMcpServers": [],
+	"alwaysThinkingEnabled": true,
+	"cleanupPeriodDays": 365,
+	"spinnerTipsEnabled": false,
+	"prefersReducedMotion": true,
+	"sandbox": {
+		"autoAllowBashIfSandboxed": true,
+		"failIfUnavailable": true,
+		"allowUnsandboxedCommands": false,
+		"excludedCommands": [],
+		"network": {
+			"allowLocalBinding": true
+		}
+	},
+	"env": {
+		"ENABLE_PROMPT_CACHING_1H": "1"
+	}
+}

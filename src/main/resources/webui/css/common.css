@@ -44,6 +44,7 @@
 
 	/* ---- 角丸 ---- */
 	--radius-thin-scrollbar: 0.2em; /* 細スクロールバー角丸 */
+	--radius-circle: 50%; /* 真円: アバター、スピナー等 */
 	--radius-round: 99999em; /* 完全丸形: ボタン、タグバッチ等 */
 	--radius-ui: 0.75em; /* フォームUI角丸 */
 	--radius-sm: 0.25em; /* 小角丸: タグバッチ等 */
@@ -51,13 +52,14 @@
 	--radius-lg: 0.55em; /* 大角丸: エージェントカード等 */
 
 	/* ---- 共通コンポーネントサイズ ---- */
-	--w-scrollbar: 0.4em; /* 細スクロールバー幅 */
 	--size-spinner: 2em; /* ローディングスピナー直径 */
-	--weight-spinner: 0.2em; /* ローディングスピナーボーダー幅 */
 	--size-notice-spinner: 1.1em; /* ノーティスバー内スピナー直径 */
-	--weight-notice-spinner: 0.15em; /* ノーティスバー内スピナーボーダー幅 */
 	--size-statusdot: 0.65em; /* エージェントカードステータスドット直径 */
+	--size-card-avatar: 2.2em; /* カードアバター直径 */
+	--w-scrollbar: 0.4em; /* 細スクロールバー幅 */
 	--w-btn-min: 3.5rem; /* ボタン最小幅 */
+	--weight-spinner: 0.2em; /* ローディングスピナーボーダー幅 */
+	--weight-notice-spinner: 0.15em; /* ノーティスバー内スピナーボーダー幅 */
 
 	/* ---- レイアウトサイズ ---- */
 	--w-split-left: 22em; /* 左右分割左ペイン幅 */
@@ -65,7 +67,14 @@
 	--w-single-layout: 80vw; /* 単一レイアウト幅 */
 	--h-card-body: 15em; /* カード本文固定高さ */
 	--h-card-owner-body: 6em; /* オーナーカード本文固定高さ */
+	--h-idle-placeholder: 3.85em; /* アイドルプレースホルダー最小高さ */
+	--h-card-message: 4.5em; /* カードメッセージエリア固定高さ */
+	--h-card-footer: 1.625em; /* カードフッター最小高さ */
+	--h-owner-textarea-min: 5em; /* オーナーテキストエリア最小高さ */
+	--h-owner-textarea-max: 22em; /* オーナーテキストエリア最大高さ */
 	--w-min-grid-col: 29.6em; /* グリッド列最小幅 */
+	--w-footer-session-max: 60%; /* セッションID省略表示最大幅 */
+	--w-full: 100%; /* 幅全体(コンテナ幅に追従) */
 
 	/* ---- 余白 ---- */
 	--sp-page: 1em; /* ページ内側余白 */
@@ -102,22 +111,62 @@
 	--sp-confirm-message-t: 0.2em; /* 確認ダイアログメッセージ上パディング */
 	--sp-confirm-message-b: 1.3em; /* 確認ダイアログメッセージ下パディング */
 	--sp-confirm-message-h: 0.2em; /* 確認ダイアログメッセージ横パディング */
+	--sp-textarea-h: 0.75em; /* テキストエリア横パディング */
+	--sp-btn-preset-v: 0.2em; /* プリセットボタン縦パディング */
+	--sp-btn-preset-h: 0.65em; /* プリセットボタン横パディング */
+	--sp-turn-block-v: 0.55em; /* ターンブロック縦パディング */
+	--sp-turn-block-h: 0.7em; /* ターンブロック横パディング */
+	--sp-turn-num-v: 0.06em; /* ターン番号バッジ縦パディング */
+	--sp-turn-num-h: 0.4em; /* ターン番号バッジ横パディング */
+	--sp-turn-meta-mb: 0.5em; /* ターンメタ下マージン */
+	--sp-turn-meta-pb: 0.3em; /* ターンメタ下パディング */
+
+	/* ---- Markdownレンダリング共通 ---- */
+	/* 見出しスケール */
+	--md-h1-size: 1.15em;
+	--md-h2-size: 1.05em;
+	--md-h3-size: 0.97em;
+	--md-heading-margin: 0.6em 0 0.3em;
+	/* 段落・リスト余白 */
+	--md-p-mb: 0.6em; /* 段落下マージン */
+	--md-list-indent: 1.5em; /* リストインデント */
+	--md-item-mb: 0.125em; /* リストアイテム下マージン */
+	/* インラインコード */
+	--md-code-size: 0.9em;
+	--md-code-pad-v: 0.1em;
+	--md-code-pad-h: 0.3em;
+	/* コードブロック */
+	--md-pre-pad-v: 0.6em;
+	--md-pre-pad-h: 0.75em;
+	/* 引用 */
+	--md-blockquote-border: 0.2em;
+	--md-blockquote-indent: 0.6em;
+	--md-blockquote-margin: 0.3em 0;
+	/* テーブル・水平線 */
+	--md-table-margin: 0.45em 0;
+	--md-cell-pad-v: 0.25em;
+	--md-cell-pad-h: 0.55em;
+	--md-hr-margin: 0.55em 0;
 
 	/* ---- グリッド間隔 ---- */
+	--gap-big: 1.1em; /* 通常間隔 */
 	--gap-normal: 0.9em; /* 通常間隔 */
 	--gap-sm: 0.58em; /* 小間隔 */
 	--gap-xs: 0.4em; /* 極小間隔 */
 	--gap-xxs: 0.2em; /* 超極小間隔 */
 	--gap-form-row: 0.3em; /* フォーム行内ラベル＋入力間隔 */
 	--gap-check: 0.5em; /* チェックボックス＋ラベル間隔 */
+	--gap-turn-meta: 0.5em; /* ターンメタ内アイテム間隔 */
 
 	/* ---- 行間 ---- */
 	--lh-normal: 1.235; /* 標準行間 */
 	--lh-loose: 1.6; /* 緩慢行間(入力エリアなど) */
+	--lh-meta: 1.5em; /* メタ情報行間 */
 
 	/* ---- 不透明度 ---- */
 	--opacity-hover: 0.85; /* ホバー状態 */
 	--opacity-active: 0.7; /* アクティブ押下状態 */
+	--opacity-disabled: 0.65; /* 非活性状態 */
 
 	/* ---- トランジション ---- */
 	--transition-fast: 0.15s; /* 高速(ホバー等) */
@@ -129,68 +178,102 @@
 	--anim-statusdot-pulse: 1.4s; /* ドット点滅時間 */
 	--anim-cursor-blink: 0.8s; /* カーソル点滅時間 */
 
-	/* ---- ベースカラー ---- */
-	--color-bg: var(--theme-bg); /* ページ背景(最暗面) */
-	--color-surface: var(--theme-surface4); /* ヘッダー・カード背景 */
-	--color-surface-alt: var(--theme-surface3); /* カードヘッダー背景 */
-	--color-surface-sub: var(--theme-surface2); /* コードブロック・ターン番号背景 */
-	--color-border: var(--theme-surface1); /* 汎用ボーダー */
-	--color-border-sub: var(--theme-surface3); /* 内部区切り線 */
+	/* ---- 固定カラー ---- */
+	--color-avatar-text: #ffffff; /* アバター文字色(着色背景上の白固定) */
 
-	/* ---- テキストカラー ---- */
-	--color-text: var(--theme-text); /* 本文テキスト */
-	--color-text-heading: var(--theme-text); /* 見出し・強調テキスト */
-	--color-text-title: var(--theme-text); /* ヘッダータイトル */
-	--color-text-muted: var(--theme-text-sub); /* 補足テキスト */
-	--color-text-subtle: var(--theme-text-sub); /* 薄めの補足テキスト */
-	--color-text-faint: var(--theme-text-sub); /* 最も薄いテキスト・待機状態等 */
-	--color-text-notice: var(--theme-accent4); /* 通知テキスト */
+	/* ---- ページ ---- */
+	--color-bg: var(--theme-page-bg); /* ページ背景色 */
+	--color-text: var(--theme-page-text); /* ページ本文テキスト */
+	--color-text-heading: var(--theme-page-text); /* 見出し・強調テキスト */
+	--color-text-title: var(--theme-page-text); /* ヘッダータイトル */
+	--color-text-sub: var(--theme-page-text-sub); /* 補足・薄テキスト */
 
-	/* ---- アクセントカラー ---- */
-	--color-accent: var(--theme-accent1); /* スピナー・汎用アクセント */
-	--color-link: var(--theme-accent1); /* リンク・ストリームカーソル */
+	/* ---- ページヘッダー ---- */
+	--color-header-bg: var(--theme-header-bg); /* ページヘッダー背景色 */
 
-	/* ---- ボタンカラー ---- */
-	--color-btn-grey-bg: var(--theme-surface1); /* グレーボタン背景 */
-	--color-btn-grey-text: var(--theme-text); /* グレーボタン文字(白字) */
+	/* ---- ノーティスバー ---- */
+	--color-notice-bar-bg: var(--theme-notice-bar-bg); /* ノーティスバー背景色 */
+	--color-notice-bar-border: var(--theme-notice-bar-border); /* ノーティスバーボーダー色 */
 
-	/* ---- UIコンポーネント: 新規作成アイテム ---- */
-	--color-new-item-bg: var(--theme-accent1-bg); /* 新規アイテム背景 */
-	--color-new-item-border: var(--theme-accent1); /* 新規アイテムボーダー */
+	/* ---- タブバー ---- */
+	--color-tab-bar-bg: var(--theme-tab-bar-bg); /* タブバー背景色 */
+	--color-tab-active-bg: var(--theme-tab-active-bg); /* アクティブタブ・セクションヘッダー背景色 */
 
-	/* ---- リーダータグカラー ---- */
-	--color-leader: var(--theme-text); /* リーダータグ文字 */
-	--color-leader-bg: var(--theme-surface2); /* リーダータグ背景 */
-	--color-leader-border: var(--color-leader); /* リーダータグボーダー */
+	/* ---- スプリットレイアウト ---- */
+	--color-split-panel-bg: var(--theme-split-panel-bg); /* 左パネル背景色 */
+	--color-split-list-bg: var(--theme-split-list-bg); /* 左パネルリスト背景色 */
+	--color-split-selected-bg: var(--theme-split-selected-bg); /* リスト選択アイテム背景色 */
+	--color-split-selected-border: var(--theme-split-selected-border); /* リスト選択アイテムボーダー色 */
+	--color-split-selected-text: var(--theme-split-selected-text); /* リスト選択アイテムテキスト色 */
 
-	/* ---- 非活性 ---- */
-	--color-idle: var(--theme-accent5); /* 非活性テキスト */
-	--color-idle-bg: var(--theme-accent5-bg); /* 非活性背景 */
+	/* ---- ボーダー ---- */
+	--color-border: var(--theme-border); /* 汎用ボーダー */
+	--color-border-sub: var(--theme-border-sub); /* 内部区切り線 */
+
+	/* ---- ボタン ---- */
+	--color-btn-bg: var(--theme-btn-bg); /* ボタン背景色 */
+	--color-btn-text: var(--theme-btn-text); /* ボタン文字色 */
+	--color-btn-disabled-bg: var(--theme-btn-disabled-bg); /* 非活性ボタン背景色 */
+	--color-btn-disabled-text: var(--theme-btn-disabled-text); /* 非活性ボタン文字色 */
+
+	/* ---- フォームフィールド ---- */
+	--color-field-bg: var(--theme-field-bg); /* フォームフィールド背景色 */
+	--color-field-text: var(--theme-field-text); /* フォームフィールドテキスト色 */
+	--color-field-disabled-bg: var(--theme-field-disabled-bg); /* 非活性・読み取り専用フィールド背景色 */
+	--color-field-disabled-text: var(--theme-field-disabled-text); /* 非活性・読み取り専用フィールドテキスト色 */
+	--color-field-label: var(--theme-field-label); /* フォームラベル文字色 */
+	--color-field-label-note: var(--theme-field-label-note); /* フォームラベル注記文字色 */
+
+	/* ---- カードレイアウト ---- */
+	--color-card-bg: var(--theme-card-bg); /* カード背景色(ボディ) */
+	--color-card-header-bg: var(--theme-card-header-bg); /* カードヘッダー背景色 */
+	--color-card-footer-bg: var(--theme-card-footer-bg); /* カードフッター背景色 */
+	--color-card-border: var(--theme-card-border); /* カードボーダー色 */
+
+	/* ---- コードブロック ---- */
+	--color-code-bg: var(--theme-field-bg); /* コードブロック・インラインコード背景色 */
+
+	/* ---- タグ ---- */
+	--color-tag-bg: var(--theme-tag-bg); /* タグ背景色 */
+	--color-tag-text: var(--theme-tag-text); /* タグ文字色 */
+	--color-tag-border: var(--theme-tag-border); /* タグボーダー色 */
+
+	/* ---- アクセント ---- */
+	--color-accent: var(--theme-accent); /* スピナー・汎用アクセント */
+	--color-link: var(--theme-accent); /* リンク・ストリームカーソル */
+
+	/* ---- 新規アイテム ---- */
+	--color-new-item-bg: var(--theme-new-item-bg); /* 新規アイテム背景色 */
+	--color-new-item-border: var(--theme-new-item-border); /* 新規アイテムボーダー色 */
+
+	/* ---- 状態色: 非活性 ---- */
+	--color-idle: var(--theme-idle); /* 非活性テキスト */
+	--color-idle-bg: var(--theme-idle-bg); /* 非活性背景 */
 	--color-idle-border-a: rgb(from var(--color-idle) r g b / 30%); /* 非活性ボーダー(半透明) */
 
-	/* ---- 通知 ---- */
-	--color-notice: var(--theme-accent3); /* 通知テキスト */
-	--color-notice-bg: var(--theme-accent3-bg); /* 通知背景 */
+	/* ---- 状態色: 情報・成功 ---- */
+	--color-info: var(--theme-info); /* 情報テキスト */
+	--color-info-bg: var(--theme-info-bg); /* 情報背景 */
+	--color-info-border-a: rgb(from var(--color-info) r g b / 30%); /* 情報ボーダー(半透明) */
+
+	/* ---- 状態色: 通知・処理中 ---- */
+	--color-notice: var(--theme-notice); /* 通知テキスト */
+	--color-notice-bg: var(--theme-notice-bg); /* 通知背景 */
 	--color-notice-border-a: rgb(from var(--color-notice) r g b / 30%); /* 通知ボーダー(半透明) */
 
-	/* ---- 成功 ---- */
-	--color-success: var(--theme-accent1); /* 成功テキスト */
-	--color-success-bg: var(--theme-accent1-bg); /* 成功背景 */
-	--color-success-border-a: rgb(from var(--color-success) r g b / 30%); /* 成功ボーダー(半透明) */
-
-	/* ---- 警告 ---- */
-	--color-warn: var(--theme-accent4); /* 警告テキスト */
-	--color-warn-bg: var(--theme-accent4-bg); /* 警告背景 */
+	/* ---- 状態色: 警告 ---- */
+	--color-warn: var(--theme-warn); /* 警告テキスト */
+	--color-warn-bg: var(--theme-warn-bg); /* 警告背景 */
 	--color-warn-border-a: rgb(from var(--color-warn) r g b / 30%); /* 警告ボーダー(半透明) */
 
-	/* ---- エラー ---- */
-	--color-error: var(--theme-accent2); /* エラーテキスト */
-	--color-error-bg: var(--theme-accent2-bg); /* エラー背景 */
+	/* ---- 状態色: エラー ---- */
+	--color-error: var(--theme-error); /* エラーテキスト */
+	--color-error-bg: var(--theme-error-bg); /* エラー背景 */
 	--color-error-border-a: rgb(from var(--color-error) r g b / 30%); /* エラーボーダー(半透明) */
 
 	/* ---- エージェントカード状態カラー ---- */
 	--color-card-idle: var(--color-idle); /* アイドル */
-	--color-card-done: var(--color-success); /* 完了 */
+	--color-card-done: var(--color-info); /* 完了 */
 	--color-card-error: var(--color-error); /* エラー */
 	--color-card-processing: var(--color-notice); /* 処理中 */
 	--color-card-processing-glow-s: var(--color-notice) 80; /* 処理中 光彩アニメーション(始) */

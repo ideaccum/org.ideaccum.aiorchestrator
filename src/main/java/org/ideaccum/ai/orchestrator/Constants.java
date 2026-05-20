@@ -51,16 +51,16 @@ public interface Constants {
 	public static final String RESOURCE_TEMPLATE_PROJECT = "/template-project";
 
 	/** リソースパス:エージェントテンプレート(フルスタック) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_FULLSTACK = "/template-agents-fullstack";
+	public static final String RESOURCE_TEMPLATE_AGENTS_FULLSTACK = "/template-agents/fullstack";
 
 	/** リソースパス:エージェントテンプレート(ライト(Claude)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE = "/template-agents-light-claude";
+	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE = "/template-agents/light-claude";
 
 	/** リソースパス:エージェントテンプレート(ライト(Codex)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CODEX = "/template-agents-light-codex";
+	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CODEX = "/template-agents/light-codex";
 
 	/** リソースパス:エージェントテンプレート(ライト(Gemini)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_GEMINI = "/template-agents-light-gemini";
+	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_GEMINI = "/template-agents/light-gemini";
 
 	/** オーケストレーター:ホームパス */
 	public static final String ORCHESTRATOR_HOME_PATH = ".orchestrator";

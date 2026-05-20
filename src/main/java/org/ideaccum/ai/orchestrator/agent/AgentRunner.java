@@ -72,6 +72,7 @@ public class AgentRunner implements Constants {
 	 * エージェント処理をタスク管理して実行します。<br>
 	 * @param agent エージェントオブジェクト
 	 * @param prompt 実行処理プロンプト
+	 * @return 実行結果情報
 	 */
 	public CompletableFuture<AgentResult> execute(Agent agent, String prompt) {
 		/*

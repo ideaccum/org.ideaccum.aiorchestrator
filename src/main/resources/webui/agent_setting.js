@@ -223,7 +223,7 @@ class AgentSettingController {
 								${agent.model ? "<span>" + Utils.esc(agent.model) + "</span>" : ""}
 							</div>
 						</div>
-						<button class="list-item-copy-btn" data-filename="${Utils.esc(agent.filename)}" tabindex="-1" title="複写" ${agent.inConversation ? "disabled" : ""}>
+						<button class="list-item-copy-btn" data-filename="${Utils.esc(agent.filename)}" tabindex="-1" title="複写">
 							${Constants.ICON_COPY}
 						</button>
 						<button class="list-item-delete-btn" data-filename="${Utils.esc(agent.filename)}" tabindex="-1" title="削除" ${agent.inConversation ? "disabled" : ""}>

@@ -82,7 +82,7 @@ public class AgentResult implements Constants, Serializable {
 	 * プロンプト以上実行時の結果レコードを生成します。<br>
 	 * @param agentName エージェント名
 	 * @param message エラーメッセージ
-	 * @apiNote exception エラー発生時例外
+	 * @param exception エラー発生時例外
 	 * @return プロンプト以上実行時の結果レコード
 	 */
 	public static AgentResult error(String agentName, String message, Throwable exception) {

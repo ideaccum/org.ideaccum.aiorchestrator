@@ -26,6 +26,13 @@ public final class Bootstrap implements Constants {
 	private static final Logger log = LoggerFactory.getLogger(Bootstrap.class);
 
 	/**
+	 * コンストラクタ<br>
+	 */
+	public Bootstrap() {
+		super();
+	}
+
+	/**
 	 * メインメソッドです。<br>
 	 * @param args コマンドライン引数
 	 * @throws Throwable 処理実行時に予期せぬエラーが発生した場合にスローされます

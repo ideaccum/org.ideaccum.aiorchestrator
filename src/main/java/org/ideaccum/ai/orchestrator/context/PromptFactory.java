@@ -32,6 +32,7 @@ public class PromptFactory implements Constants {
 
 	/**
 	 * コンストラクタ<br>
+	 * @param context コンテキストオブジェクト
 	 */
 	public PromptFactory(Context context) {
 		super();

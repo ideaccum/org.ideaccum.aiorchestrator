@@ -82,6 +82,20 @@ class ProcessController {
 			this.#ownerCard.startBtn.onclick = () => this.#onOwnerStart();
 			this.#ownerCard.stopBtn.onclick = () => this.#onOwnerStop();
 
+			// プリセットボタン
+			const setPreset = (id, prompt) => {
+				const btn = document.getElementById(id);
+				if (btn) btn.onclick = () => {
+					if (!this.#ownerCard.promptTextarea.disabled) {
+						this.#ownerCard.promptTextarea.value = prompt;
+						this.#ownerCard.promptTextarea.focus();
+					}
+				};
+			};
+			setPreset("owner-preset-check",   Constants.PROMPT_CHECK_AGENTS);
+			setPreset("owner-preset-summary",  Constants.PROMPT_SUMMARY);
+			setPreset("owner-preset-next",     Constants.PROMPT_NEXT_ACTION);
+
 			const status = await WebAPI.getOrchestratorStatus({});
 			if (!status?.data?.projectSelected) {
 				return;
@@ -147,6 +161,7 @@ class ProcessController {
 		this.#ownerCard.startBtn.style.display = "none";
 		this.#ownerCard.stopBtn.style.display = "";
 		this.#ownerCard.stopBtn.disabled = false;
+		this.#ownerCard.el.querySelectorAll(".btn-preset").forEach((btn) => (btn.disabled = true));
 	}
 
 	/**
@@ -160,6 +175,7 @@ class ProcessController {
 		this.#ownerCard.startBtn.style.display = "";
 		this.#ownerCard.startBtn.disabled = false;
 		this.#ownerCard.stopBtn.style.display = "none";
+		this.#ownerCard.el.querySelectorAll(".btn-preset").forEach((btn) => (btn.disabled = false));
 	}
 
 	/**
@@ -243,7 +259,7 @@ class ProcessController {
 			const initial = (agent.name || "?").charAt(0).toUpperCase();
 			const avatarColor = Utils.avatarColor(agent.name || "");
 			const elCard = document.createElement("div");
-			elCard.className = "agent-card";
+			elCard.className = "card agent-card";
 			elCard.innerHTML = `
 				<div class="card-header">
 					<div class="card-avatar" style="background: ${avatarColor}">${initial}</div>
@@ -316,7 +332,7 @@ class ProcessController {
 					// 履歴リセット(preloadBuffer/executeがフル再生するため重複を防ぐ)
 					// 実行中/アイドル状態は変更しない(orchestrator_startedの後にagent_initializedが届くため)
 					this.#ownerCard.el.style.display = "";
-					this.#ownerCard.historyEl.innerHTML = "";
+					this.#ownerCard.historyEl.innerHTML = '<div class="idle-placeholder">プロンプト待ち</div>';
 					this.#ownerCard.currentText = null;
 					this.#ownerCard.currentRaw = "";
 					this.#ownerCard.turnCount = 0;
@@ -409,7 +425,7 @@ class ProcessController {
 					<span class="turn-num">Turn ${card.turnCount}</span>
 					<span>${Utils.esc(timestamp || "")}</span>
 				</div>
-				<div class="turn-text streaming" data-turn-text></div>
+				<div class="turn-text md-content streaming" data-turn-text></div>
 			`;
 			card.body.appendChild(turnBlock);
 			card.currentText = turnBlock.querySelector("[data-turn-text]");
@@ -587,6 +603,7 @@ class ProcessController {
 			if (!this.#ownerCard) {
 				return;
 			}
+			this.#ownerCard.historyEl.querySelector(".idle-placeholder")?.remove();
 			this.#ownerCard.turnCount++;
 			const turnBlock = document.createElement("div");
 			turnBlock.className = "turn-block";
@@ -595,7 +612,7 @@ class ProcessController {
 					<span class="turn-num">Turn ${this.#ownerCard.turnCount}</span>
 					<span>${Utils.esc(timestamp || "")}</span>
 				</div>
-				<div class="turn-text streaming" data-turn-text></div>
+				<div class="turn-text md-content streaming" data-turn-text></div>
 			`;
 			this.#ownerCard.historyEl.appendChild(turnBlock);
 			this.#ownerCard.currentText = turnBlock.querySelector("[data-turn-text]");

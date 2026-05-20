@@ -65,20 +65,27 @@
 		<!-- メインコンテンツ -->
 		<div class="main scrollbar-thin">
 			<!-- オーナーカード(全幅) -->
-			<div id="owner-card" class="owner-card" style="display: none">
-				<div class="owner-card-header">
+			<div id="owner-card" class="card owner-card" style="display: none">
+				<div class="card-header">
 					<div class="card-avatar owner-avatar">O</div>
 					<span class="agent-name">Owner</span>
 					<span class="owner-label">オーナー</span>
 					<div class="owner-card-actions">
-						<button id="owner-start-btn" class="btn btn-run">▶ 実行</button>
-						<button id="owner-stop-btn" class="btn owner-stop-btn" style="display: none">■ 停止</button>
+						<button id="owner-start-btn" class="btn btn-run">実行</button>
+						<button id="owner-stop-btn" class="btn owner-stop-btn" style="display: none">停止</button>
 					</div>
 				</div>
 				<!-- 発言履歴エリア -->
-				<div id="owner-history" class="owner-history scrollbar-thin" data-owner-history></div>
+				<div id="owner-history" class="card-body owner-card-body scrollbar-thin" data-owner-history>
+					<div class="idle-placeholder">プロンプト待ち</div>
+				</div>
 				<!-- プロンプト入力エリア -->
-				<div class="owner-input-body">
+				<div class="owner-card-input">
+					<div class="owner-preset-row">
+						<button id="owner-preset-check" class="btn btn-preset" type="button">エージェント存在確認</button>
+						<button id="owner-preset-summary" class="btn btn-preset" type="button">過去会話のサマリー</button>
+						<button id="owner-preset-next" class="btn btn-preset" type="button">推奨される次の指示</button>
+					</div>
 					<textarea id="owner-prompt-input" class="owner-prompt-textarea scrollbar-thin" placeholder="タスクプロンプトを入力してください..."></textarea>
 				</div>
 			</div>

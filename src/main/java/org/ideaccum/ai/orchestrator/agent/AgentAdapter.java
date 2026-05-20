@@ -20,6 +20,13 @@ import org.ideaccum.ai.orchestrator.Constants;
 public abstract class AgentAdapter implements Constants, Agent {
 
 	/**
+	 * コンストラクタ<br>
+	 */
+	public AgentAdapter() {
+		super();
+	}
+
+	/**
 	 * オブジェクトのハッシュコードを提供します。<br>
 	 * <p>
 	 * エージェントオブジェクトのハッシュコードはエージェント名、エージェント種別のみで生成されます。<br>

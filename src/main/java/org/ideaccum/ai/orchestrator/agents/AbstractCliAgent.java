@@ -66,6 +66,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 	 * @param agentConfig エージェント設定情報
 	 */
 	public AbstractCliAgent(Context context, AgentConfig agentConfig) {
+		super();
 		this.context = context;
 		this.agentConfig = agentConfig;
 		this.sessionId = null;

@@ -15,6 +15,19 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import tools.jackson.databind.node.StringNode;
 
+/**
+ * エージェントの出力関連のユーティリティクラスです。<br>
+ * <p>
+ * エージェントのレスポンスや発言内容をダンプ出力する機能を提供します。<br>
+ * </p>
+ * 
+ * @author Kitagawa<br>
+ * 
+ *<!--
+ * 更新日		更新者			更新内容
+ * 2026/05/19	Kitagawa		新規作成
+ *-->
+ */
 public class OutputUtils implements Constants {
 
 	/**

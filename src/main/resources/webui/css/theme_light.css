@@ -10,6 +10,8 @@
  *<!--
  * 更新日		更新者			更新内容
  * 2026/05/14	Kitagawa		新規作成
+ * 2026/05/18	Kitagawa		theme_darkに合わせて再設計(明度階層を正しく対応)
+ * 2026/05/20	Kitagawa		意味的なテーマ変数体系へ再設計
  *-->
  */
 /*
@@ -18,23 +20,86 @@
  * ============================================================
  */
 :root {
-	/* ---- テーマカラー ---- */
-	--theme-bg: #ffffff;
-	--theme-text: #1f2328;
-	--theme-text-sub: #6e7781;
-	--theme-surface1: #c8cdd3;
-	--theme-surface2: #e8ebee;
-	--theme-surface3: #f0f2f4;
-	--theme-surface4: #f6f8fa;
-	--theme-accent1: #0969da;
-	--theme-accent1-bg: #ddf4ff;
-	--theme-accent2: #cf222e;
-	--theme-accent2-bg: #ffebe9;
-	--theme-accent3: #1a7f37;
-	--theme-accent3-bg: #dafbe1;
-	--theme-accent4: #9a6700;
-	--theme-accent4-bg: #fff8c5;
-	--theme-accent5: #6e7781;
-	--theme-accent5-bg: #e8ebee;
+	/* ---- ページ ---- */
+	--theme-page-bg: #fcfcfc; /* ページ背景色 */
+	--theme-page-text: #1f1f1f; /* ページ本文テキスト色 */
+	--theme-page-text-sub: #575757; /* ページ補足テキスト色 */
+
+	/* ---- ページヘッダー ---- */
+	--theme-header-bg: #fcfcfc; /* ページヘッダー背景色 */
+
+	/* ---- ノーティスバー ---- */
+	--theme-notice-bar-bg: #f0f0f0; /* ノーティスバー背景色 */
+	--theme-notice-bar-border: #d8d8d8; /* ノーティスバーボーダー色 */
+
+	/* ---- タブバー ---- */
+	--theme-tab-bar-bg: #fafafa; /* タブバー背景色 */
+	--theme-tab-active-bg: #d6d6d6; /* アクティブタブ・セクションヘッダー背景色 */
+
+	/* ---- スプリットレイアウト ---- */
+	--theme-split-panel-bg: var(--theme-tab-active-bg); /* 左パネル背景色 */
+	--theme-split-list-bg: #f6f6f6; /* 左パネルリスト背景色 */
+	--theme-split-selected-bg: #c6e1f3; /* リスト選択アイテム背景色 */
+	--theme-split-selected-border: rgba(9, 105, 218, 0.4); /* リスト選択アイテムボーダー色 */
+	--theme-split-selected-text: #0969da; /* リスト選択アイテムテキスト色 */
+
+	/* ---- ボタン ---- */
+	--theme-btn-bg: #aeaeae; /* ボタン背景色 */
+	--theme-btn-text: #ffffff; /* ボタン文字色 */
+	--theme-btn-disabled-bg: #cfcfcf; /* 非活性ボタン背景色 */
+	--theme-btn-disabled-text: #888888; /* 非活性ボタン文字色 */
+
+	/* ---- フォームフィールド ---- */
+	--theme-field-bg: #ededed; /* フォームフィールド背景色 */
+	--theme-field-text: #292929; /* フォームフィールドテキスト色 */
+	--theme-field-disabled-bg: #e4e4e4; /* 非活性・読み取り専用フィールド背景色 */
+	--theme-field-disabled-text: #8b8b8b; /* 非活性・読み取り専用フィールドテキスト色 */
+	--theme-field-label: #696969; /* フォームラベル文字色 */
+	--theme-field-label-note: #ac760b; /* フォームラベル注記文字色 */
+
+	/* ---- カードレイアウト ---- */
+	--theme-card-bg: #ececec; /* カード背景色(ボディ) */
+	--theme-card-header-bg: #ebebeb; /* カードヘッダー背景色 */
+	--theme-card-footer-bg: #d8d8d8; /* カードフッター背景色 */
+	--theme-card-border: rgba(110, 119, 129, 0.45); /* カードボーダー色 */
+
+	/* ---- ボーダー ---- */
+	--theme-border: #d8d8d8; /* 汎用ボーダー色 */
+	--theme-border-sub: #cdd5dc; /* 内部区切り線色 */
+
+	/* ---- タグ ---- */
+	--theme-tag-bg: #009be2; /* タグ背景色 */
+	--theme-tag-text: #ffffff; /* タグ文字色 */
+	--theme-tag-border: #009be2; /* タグボーダー色 */
+
+	/* ---- アクセント ---- */
+	--theme-accent: #0969da; /* リンク・スピナー等汎用アクセント */
+	--theme-accent-bg: #ddf4ff; /* アクセント背景色 */
+
+	/* ---- 状態色: 情報・成功 ---- */
+	--theme-info: #0969da;
+	--theme-info-bg: #ddf4ff;
+
+	/* ---- 状態色: 通知・処理中 ---- */
+	--theme-notice: #1a7f37;
+	--theme-notice-bg: #dafbe1;
+
+	/* ---- 状態色: 警告 ---- */
+	--theme-warn: #9a6700;
+	--theme-warn-bg: #fff8c5;
+
+	/* ---- 状態色: エラー ---- */
+	--theme-error: #cf222e;
+	--theme-error-bg: #ffebe9;
+
+	/* ---- 状態色: 非活性 ---- */
+	--theme-idle: #6e7781;
+	--theme-idle-bg: #eaf0f6;
+
+	/* ---- 新規アイテム ---- */
+	--theme-new-item-bg: #ddf4ff;
+	--theme-new-item-border: #0969da;
+
+	/* ---- 特殊 ---- */
 	--theme-owner-avator: #607d8b;
 }

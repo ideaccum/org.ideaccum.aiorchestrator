@@ -110,7 +110,7 @@ class LogViewController {
 					'<span class="log-turn-timestamp">' + Utils.esc(conv.timestamp || "") + "</span>";
 
 				const body = document.createElement("div");
-				body.className = "log-turn-body";
+				body.className = "log-turn-body md-content";
 				body.innerHTML = marked.parse(conv.content || "");
 
 				const tokens = document.createElement("div");
@@ -123,6 +123,12 @@ class LogViewController {
 				turn.appendChild(tokens);
 				elEntries.appendChild(turn);
 			});
+
+			// 描画完了後にスクロール末端へ移動
+			const main = document.querySelector(".main");
+			if (main) {
+				main.scrollTop = main.scrollHeight;
+			}
 		} catch (e) {
 			Utils.catchFatal(e);
 		}

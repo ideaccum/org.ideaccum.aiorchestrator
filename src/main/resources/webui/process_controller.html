@@ -30,7 +30,15 @@
 
 		<!-- ヘッダー -->
 		<div class="header">
-			<span class="header-title">Multi Agent Controller</span>
+			<img class="header-logo" src="image/logo.png" alt="" />
+			<nav class="header-nav">
+				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
+				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
+				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project header-nav-active">コントローラー</a>
+				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
+				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
+			</nav>
+			<span id="header-project-name" class="header-project-name"></span>
 		</div>
 
 		<!-- ノーティスバー -->
@@ -52,15 +60,6 @@
 		<!-- 情報メッセージパネル -->
 		<div id="page-message-info" class="page-message-info" style="display: none"></div>
 
-		<!-- タブバー -->
-		<div class="tab-bar">
-			<a href="/webui/project_setting.html" class="tab-item">プロジェクト</a>
-			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
-			<a href="/webui/process_controller.html" class="tab-item tab-requires-project tab-active">コントローラー</a>
-			<a href="/webui/log_view.html" class="tab-item tab-requires-project">ログ</a>
-			<a href="/webui/config_setting.html" class="tab-item">設定</a>
-			<span id="header-project-name" class="tab-project-name"></span>
-		</div>
 
 		<!-- メインコンテンツ -->
 		<div class="main scrollbar-thin">
@@ -82,6 +81,7 @@
 				<!-- プロンプト入力エリア -->
 				<div class="owner-card-input">
 					<div class="owner-preset-row">
+						<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:var(--opacity-active)"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7 1H9l-.7-1A7 7 0 0 1 12 2z"/></svg>
 						<button id="owner-preset-check" class="btn btn-preset" type="button">エージェント存在確認</button>
 						<button id="owner-preset-summary" class="btn btn-preset" type="button">過去会話のサマリー</button>
 						<button id="owner-preset-next" class="btn btn-preset" type="button">推奨される次の指示</button>

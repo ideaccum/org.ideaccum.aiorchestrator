@@ -156,6 +156,7 @@ public class AgentRunner implements Constants {
 		log.info("エージェント処理セッションを終了します(%s(%s)) / %s / Session=%s [%s]".formatted(name, role, type, sessionId, threadName));
 		log.info("エージェント処理で使用したトークンは、" + tokenUsage + "でした。");
 		log.info("エージェント処理の所要時間は、" + elapsedTime + "msでした。");
-		AgentWebUIEventController.instance().publishFinish(agent, result);
+		// Orchestratorが会話ログ保存後に累計トークンで呼ぶため、ここでは呼ばない
+		//AgentWebUIEventController.instance().publishFinish(agent, result);
 	}
 }

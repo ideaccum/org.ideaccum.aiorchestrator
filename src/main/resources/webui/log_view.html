@@ -30,7 +30,15 @@
 
 		<!-- ヘッダー -->
 		<div class="header">
-			<span class="header-title">Multi Agent Controller</span>
+			<img class="header-logo" src="image/logo.png" alt="" />
+			<nav class="header-nav">
+				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
+				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
+				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project header-nav-active">ログ</a>
+				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
+			</nav>
+			<span id="header-project-name" class="header-project-name"></span>
 		</div>
 
 		<!-- ノーティスバー -->
@@ -52,19 +60,10 @@
 		<!-- 情報メッセージパネル -->
 		<div id="page-message-info" class="page-message-info" style="display: none"></div>
 
-		<!-- タブバー -->
-		<div class="tab-bar">
-			<a href="/webui/project_setting.html" class="tab-item">プロジェクト</a>
-			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
-			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
-			<a href="/webui/log_view.html" class="tab-item tab-requires-project tab-active">ログ</a>
-			<a href="/webui/config_setting.html" class="tab-item">設定</a>
-			<span id="header-project-name" class="tab-project-name"></span>
-		</div>
 
 		<!-- ページヘッダー(更新ボタン) -->
-		<div class="split-right-header">
-			<span class="split-right-title"></span>
+		<div class="content-header">
+			<span class="content-title"></span>
 			<div class="btn-row">
 				<button id="btn-refresh" type="button" class="btn btn-icon" title="更新"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
 			</div>

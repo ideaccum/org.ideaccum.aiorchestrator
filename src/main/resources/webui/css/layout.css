@@ -73,8 +73,9 @@ body {
 body.disconnected .page-message-error,
 body.disconnected .page-message-warn,
 body.disconnected .page-message-info,
-body.disconnected .tab-bar,
+body.disconnected .header-nav,
 body.disconnected .split-layout,
+body.disconnected .content-header,
 body.disconnected .main,
 body.disconnected .page-notice {
 	display: none !important;
@@ -174,16 +175,19 @@ body.disconnected .disconnected-panel {
 .header {
 	background: var(--color-header-bg);
 	border-bottom: var(--border-width) solid var(--color-border);
-	padding: var(--sp-header-v) var(--sp-header-h);
+	padding: 0 var(--sp-header-h) 0 0;
+	height: var(--h-header);
 	display: flex;
 	align-items: center;
-	gap: var(--gap-sm);
+	gap: var(--gap-xxs);
 	flex-shrink: 0;
 }
-/* ---- ヘッダーアプリ名テキスト ---- */
-.header-title {
-	font-size: var(--fs-title);
-	color: var(--color-text-title);
+/* ---- ヘッダーロゴ ---- */
+.header-logo {
+	width: auto;
+	height: var(--size-header-logo);
+	padding: 0 0 0 var(--gap-xs);
+	flex-shrink: 0;
 }
 
 /*
@@ -271,59 +275,53 @@ body.disconnected .disconnected-panel {
 
 /*
  * ============================================================
- * タブバー
+ * ヘッダーナビゲーション
  * ============================================================
  */
-/* ---- ページ切り替えタブバー ---- */
-.tab-bar {
+/* ---- ヘッダー内ナビゲーション ---- */
+.header-nav {
 	display: flex;
-	align-items: flex-end;
-	padding: var(--sp-tab-bar-t) var(--sp-header-h) var(--sp-tab-bar-b) var(--sp-header-h);
-	background: var(--color-tab-bar-bg);
-	border-bottom: var(--border-width) solid var(--color-border);
-	flex-shrink: 0;
+	align-self: stretch;
+	align-items: center;
+	gap: 2px;
 }
-/* ---- タブバー内プロジェクト名 ---- */
-.tab-project-name {
+/* ---- ナビゲーションアイテム ---- */
+.header-nav-item {
+	display: flex;
+	align-items: center;
+	padding: 0.2rem var(--sp-tab-item-h);
+	font-size: var(--fs-small);
+	color: rgba(255, 255, 255, 0.75);
+	text-decoration: none;
+	white-space: nowrap;
+	border-radius: var(--radius-sm);
+	transition: color var(--transition-fast), background var(--transition-fast);
+}
+/* ---- ホバー ---- */
+.header-nav-item:hover {
+	color: rgba(255, 255, 255, 0.9);
+	background: rgba(255, 255, 255, 0.1);
+}
+/* ---- アクティブページ ---- */
+.header-nav-item.header-nav-active {
+	color: rgba(255, 255, 255, 0.9);
+	background: rgba(255, 255, 255, 0.1);
+}
+/* ---- ヘッダー内プロジェクト名 ---- */
+.header-project-name {
 	margin-left: auto;
 	padding: 0 var(--sp-header-h);
 	color: var(--color-text-sub);
+	font-size: var(--fs-small);
 	white-space: nowrap;
 	align-self: center;
+	flex-shrink: 0;
 }
-.tab-project-name:empty {
+.header-project-name:empty {
 	display: none;
 }
-/* ---- タブアイテム ---- */
-.tab-item {
-	display: flex;
-	align-items: center;
-	padding: var(--sp-tab-item-v) var(--sp-tab-item-h);
-	font-size: var(--fs-small);
-	color: var(--color-text-sub);
-	text-decoration: none;
-	border: var(--border-width) solid transparent;
-	border-bottom: none;
-	border-radius: var(--radius-md) var(--radius-md) 0 0;
-	position: relative;
-	bottom: -1px;
-	white-space: nowrap;
-	transition:
-		color var(--transition-base),
-		background var(--transition-base);
-}
-/* ---- タブホバー ---- */
-.tab-item:hover {
-	color: var(--color-text);
-}
-/* ---- アクティブタブ ---- */
-.tab-item.tab-active {
-	color: var(--color-text-heading);
-	background: var(--color-tab-active-bg);
-	border-color: var(--color-border);
-}
 /* ---- プロジェクト未選択時に非表示 ---- */
-body:not(.has-project) .tab-requires-project {
+body:not(.has-project) .header-nav-requires-project {
 	display: none;
 }
 
@@ -358,6 +356,7 @@ body:not(.has-project) .tab-requires-project {
 	display: flex;
 	flex-direction: column;
 	background: var(--color-split-panel-bg);
+	border-right: var(--border-width) solid var(--color-border-sub);
 	overflow: hidden;
 }
 /* ---- 左ペインヘッダー行 ---- */
@@ -365,10 +364,9 @@ body:not(.has-project) .tab-requires-project {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--gap-sm) var(--gap-big) var(--gap-sm) var(--gap-big);
-	min-height: var(--h-split-header);
+	padding: var(--gap-xxs) var(--gap-big) var(--gap-xxs) var(--gap-big);
+	height: 1.875rem;
 	background: var(--color-split-panel-bg);
-	border-bottom: var(--border-width) solid var(--color-border-sub);
 	flex-shrink: 0;
 }
 /* ---- 左ペインヘッダータイトル ---- */
@@ -381,7 +379,7 @@ body:not(.has-project) .tab-requires-project {
 .split-left-body {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--gap-sm);
+	padding: 0 var(--gap-sm) var(--gap-sm) var(--gap-sm);
 	background-color: var(--color-split-list-bg);
 }
 /* ---- 右ペイン(可変幅・詳細・フォーム等) ---- */
@@ -392,26 +390,34 @@ body:not(.has-project) .tab-requires-project {
 	overflow: hidden;
 	min-width: 0;
 }
-/* ---- 右ペインヘッダー行 ---- */
-.split-right-header {
+/* ---- コンテンツヘッダー行 ---- */
+.content-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--sp-card-v) var(--sp-card-h);
-	min-height: var(--h-split-header);
-	border-bottom: var(--border-width) solid var(--color-border-sub);
-	background: var(--theme-split-panel-bg);
+	padding: 0 var(--gap-big);
+	border-bottom: 0 solid var(--color-border-sub);
+	height: var(--h-content-header);
+	background: linear-gradient(to bottom, var(--color-bg) 5%, transparent 100%);
 	flex-shrink: 0;
 	gap: var(--gap-sm);
+	position: relative;
+	z-index: 2;
 }
-/* ---- 右ペインヘッダータイトル ---- */
-.split-right-title {
+/* ---- コンテンツヘッダーと隣接するスクロール領域をヘッダー後ろに重ねる ---- */
+.content-header ~ .main,
+.split-right .content-header ~ .form-panel {
+	margin-top: calc(-1 * var(--h-content-header));
+	padding-top: var(--h-content-header);
+}
+/* ---- コンテンツヘッダータイトル ---- */
+.content-title {
 	font-size: var(--fs-small);
 	color: var(--color-text-sub);
 	font-weight: var(--fw-semibold);
 }
-/* ---- ヘッダー内ボタン行(上マージンなし) ---- */
-.split-right-header .btn-row {
+/* ---- コンテンツヘッダー内ボタン行(上マージンなし) ---- */
+.content-header .btn-row {
 	margin-top: 0;
 }
 /* ---- 右ペイン未選択空状態 ---- */
@@ -548,6 +554,14 @@ body:not(.has-project) .tab-requires-project {
 	border-color: var(--color-split-selected-border);
 	color: var(--color-split-selected-text);
 }
+/* ---- アイテムアイコン ---- */
+.list-item-icon {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-text-sub);
+}
 /* ---- アイテム本文エリア(削除ボタンとの横並び) ---- */
 .list-item-content {
 	flex: 1;
@@ -654,7 +668,7 @@ body:not(.has-project) .tab-requires-project {
 	display: flex;
 	flex-direction: column;
 	overflow-y: auto;
-	padding: var(--sp-form-v) var(--sp-form-h);
+	padding: 0 var(--sp-form-h) var(--sp-form-v) var(--sp-form-h);
 	gap: var(--gap-normal);
 }
 /* ---- フォーム行(ラベル＋入力縦並び) ---- */
@@ -733,7 +747,7 @@ body:not(.has-project) .tab-requires-project {
 	border-bottom: var(--border-width) solid var(--color-border-sub);
 	margin-bottom: var(--gap-xs);
 }
-.form-section-label:first-child {
+.form-panel > .form-section-label:first-child {
 	padding-top: 0;
 }
 /* ---- フォームラベル注記 ---- */

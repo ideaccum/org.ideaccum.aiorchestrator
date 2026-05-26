@@ -2,6 +2,7 @@ package org.ideaccum.ai.orchestrator.webui;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -912,6 +913,8 @@ public class AgentWebUIServer implements Constants {
 			String templateAgentsResource = null;
 			if ("fullstack".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_FULLSTACK;
+			} else if ("middle".equals(agentTemplate)) {
+				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_MIDDLE;
 			} else if ("light_claude".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE;
 			} else if ("light_codex".equals(agentTemplate)) {
@@ -1014,14 +1017,75 @@ public class AgentWebUIServer implements Constants {
 
 			Path convFile = config.getAgentConversationLogfile(projectName);
 			boolean hasConversations = false;
+			int turnCount = 0;
+			long totalTokens = 0;
+			long durationSec = 0;
+			Map<String, Long> agentTokenMap = new LinkedHashMap<>();
 			if (Files.exists(convFile)) {
 				try {
 					JsonNode convNode = MAPPER.readTree(convFile.toFile());
-					hasConversations = convNode.isArray() && !convNode.isEmpty();
+					JsonNode entriesNode = convNode.isArray() ? convNode : convNode.path("entries");
+					if (entriesNode.isArray() && !entriesNode.isEmpty()) {
+						hasConversations = true;
+						SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+						String firstTimestamp = null;
+						String lastTimestamp = null;
+						for (JsonNode entry : entriesNode) {
+							String agentName = entry.path("agentName").asString("");
+							String timestamp = entry.path("timestamp").asString("");
+							if (!timestamp.isEmpty()) {
+								if (firstTimestamp == null) {
+									firstTimestamp = timestamp;
+								}
+								lastTimestamp = timestamp;
+							}
+							if (!OWNER_AGENT_NAME.equals(agentName)) {
+								turnCount++;
+								JsonNode tokenUsage = entry.path("tokenUsage");
+								long ioTokens = tokenUsage.path("inputTokens").asLong(0) + tokenUsage.path("outputTokens").asLong(0);
+								totalTokens += ioTokens;
+								agentTokenMap.merge(agentName, ioTokens, Long::sum);
+							}
+						}
+						if (firstTimestamp != null && lastTimestamp != null && !firstTimestamp.equals(lastTimestamp)) {
+							try {
+								long first = sdf.parse(firstTimestamp).getTime();
+								long last = sdf.parse(lastTimestamp).getTime();
+								durationSec = (last - first) / 1000;
+							} catch (Throwable ignored) {
+							}
+						}
+					}
 				} catch (Throwable ignored) {
 				}
 			}
+			// エージェントごとにtype/modelを付加したリストを構築
+			List<Map<String, Object>> agentTokens = new ArrayList<>();
+			for (Map.Entry<String, Long> e : agentTokenMap.entrySet()) {
+				String agentName = e.getKey();
+				Map<String, Object> entry = new LinkedHashMap<>();
+				entry.put("name", agentName);
+				entry.put("tokens", e.getValue());
+				Path agentFile = config.getApplicationAgentsPath(projectName).resolve(agentName + ".properties");
+				if (Files.exists(agentFile)) {
+					Properties agentProps = new Properties();
+					try (Reader agentReader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(agentFile)), StandardCharsets.UTF_8)) {
+						agentProps.load(agentReader);
+					} catch (Throwable ignored) {
+					}
+					entry.put("type", agentProps.getProperty("agent.type", ""));
+					entry.put("model", agentProps.getProperty("agent.model", ""));
+				} else {
+					entry.put("type", "");
+					entry.put("model", "");
+				}
+				agentTokens.add(entry);
+			}
 			project.put("hasConversations", hasConversations);
+			project.put("turnCount", turnCount);
+			project.put("totalTokens", totalTokens);
+			project.put("durationSec", durationSec);
+			project.put("agentTokens", agentTokens);
 			result.add(project);
 		}
 

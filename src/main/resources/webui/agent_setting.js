@@ -212,6 +212,7 @@ class AgentSettingController {
 					item.className = "list-item";
 					item.dataset.filename = agent.filename;
 					item.innerHTML = `
+						<div class="list-item-icon">${Constants.ICON_AGENT}</div>
 						<div class="list-item-content">
 							<div class="list-item-ali-info">
 								<span class="list-item-ali-label">${Utils.esc(agent.name)}</span>

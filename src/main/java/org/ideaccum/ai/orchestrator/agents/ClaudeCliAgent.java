@@ -25,12 +25,10 @@ import tools.jackson.databind.JsonNode;
  *<!--
  * 更新日		更新者		更新内容
  * 2026/03/31	Kitagawa	新規作成
+ * 2026/05/26	Kitagawa	トークン集計不具合を修正
  *-->
  */
 public class ClaudeCliAgent extends AbstractCliAgent {
-
-	/** トークン使用量ルックアップID */
-	private String tokenUsageId;
 
 	/**
 	 * コンストラクタ<br>
@@ -39,7 +37,6 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 	 */
 	public ClaudeCliAgent(Context context, AgentConfig agentConfig) {
 		super(context, agentConfig);
-		this.tokenUsageId = null;
 	}
 
 	/**
@@ -120,6 +117,30 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 	@Override
 	protected void prepare() throws Throwable {
 		Files.createDirectories(getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".claude"));
+	}
+
+	/**
+	 * エージェントからのエラーレスポンスを抽出します。<br>
+	 * このレスポンスがあった場合は後続処理は中断されます。<br>
+	 * @param response エージェントレスポンス
+	 * @return エラーメッセージ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupError(java.lang.String)
+	 */
+	protected String lookupError(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		String result = null;
+		try {
+			if (response.indexOf("Not logged in") >= 0) {
+				result = "認証が行われていません。";
+			}
+
+			return result;
+		} catch (Throwable e) {
+			System.err.println("[ERROR] " + response);
+			return response;
+		}
 	}
 
 	/**
@@ -250,28 +271,26 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 		try {
 			JsonNode node = MAPPER.readTree(response);
 
-			if (node.path("message").path("id").asString().equals(tokenUsageId)) {
+			// type=resultのみ対象とする(assistant、user、systemはスキップ)
+			if (!"result".equals(node.path("type").asString())) {
 				return null;
 			}
 
-			// トークンノードがない場合はスキップ
-			if (false //
-					|| node.path("message").path("usage").path("input_tokens").isMissingNode() //
-					|| node.path("message").path("usage").path("cache_creation_input_tokens").isMissingNode() //
-					|| node.path("message").path("usage").path("cache_read_input_tokens").isMissingNode() //
-					|| node.path("message").path("usage").path("output_tokens").isMissingNode() //
-			) {
+			// modelUsageが存在しない場合はスキップ(error_during_execution等）
+			JsonNode modelUsageNode = node.path("modelUsage");
+			if (modelUsageNode.isMissingNode() || modelUsageNode.isNull()) {
 				return null;
 			}
 
-			// トークン情報取得
-			long inputToken = node.path("message").path("usage").path("input_tokens").asLong();
-			long cacheCreationInputTokens = node.path("message").path("usage").path("cache_creation_input_tokens").asLong();
-			long cacheReadInputTokens = node.path("message").path("usage").path("cache_read_input_tokens").asLong();
-			long outputToken = node.path("message").path("usage").path("output_tokens").asLong();
+			// 全モデルを合算(例: claude-sonnet-4-6[1m] + claude-haiku-4-5-20251001)
+			long inputTokens = 0L;
+			long outputTokens = 0L;
+			for (JsonNode modelNode : modelUsageNode) {
+				inputTokens += modelNode.path("inputTokens").asLong(0L);
+				outputTokens += modelNode.path("outputTokens").asLong(0L);
+			}
 
-			TokenUsage result = new TokenUsage(inputToken + cacheCreationInputTokens + cacheReadInputTokens, outputToken, 0);
-			tokenUsageId = node.path("message").path("id").asString();
+			TokenUsage result = new TokenUsage(inputTokens, outputTokens);
 
 			return result;
 		} catch (Throwable e) {

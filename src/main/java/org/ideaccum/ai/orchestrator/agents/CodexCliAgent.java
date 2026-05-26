@@ -24,6 +24,7 @@ import tools.jackson.databind.JsonNode;
  *<!--
  * 更新日		更新者		更新内容
  * 2026/03/31	Kitagawa	新規作成
+ * 2026/05/26	Kitagawa	トークン集計不具合を修正
  *-->
  */
 public class CodexCliAgent extends AbstractCliAgent {
@@ -95,6 +96,30 @@ public class CodexCliAgent extends AbstractCliAgent {
 	@Override
 	protected void prepare() throws Throwable {
 		Files.createDirectories(getContext().getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".codex"));
+	}
+
+	/**
+	 * エージェントからのエラーレスポンスを抽出します。<br>
+	 * このレスポンスがあった場合は後続処理は中断されます。<br>
+	 * @param response エージェントレスポンス
+	 * @return エラーメッセージ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupError(java.lang.String)
+	 */
+	protected String lookupError(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		String result = null;
+		try {
+			if (response.indexOf("HTTP error: 401 Unauthorized") >= 0) {
+				result = "認証が行われていません。";
+			}
+
+			return result;
+		} catch (Throwable e) {
+			System.err.println("[ERROR] " + response);
+			return response;
+		}
 	}
 
 	/**
@@ -234,19 +259,17 @@ public class CodexCliAgent extends AbstractCliAgent {
 				return null;
 			}
 
-			// トークンノードがない場合はスキップ
-			if (false //
-					|| node.path("usage").path("input_tokens").isMissingNode() //
-					|| node.path("usage").path("output_tokens").isMissingNode() //
-			) {
+			// usageが存在しない場合はスキップ
+			JsonNode usageNode = node.path("usage");
+			if (usageNode.isMissingNode() || usageNode.isNull()) {
 				return null;
 			}
 
 			// トークン情報取得
-			long inputToken = node.path("usage").path("input_tokens").asLong();
-			long outputToken = node.path("usage").path("output_tokens").asLong();
+			long inputTokens = node.path("usage").path("input_tokens").asLong(0L);
+			long outputTokens = node.path("usage").path("output_tokens").asLong(0L);
 
-			TokenUsage result = new TokenUsage(inputToken, outputToken, 0);
+			TokenUsage result = new TokenUsage(inputTokens, outputTokens);
 
 			return result;
 		} catch (Throwable e) {

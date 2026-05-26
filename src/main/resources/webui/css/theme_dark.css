@@ -20,85 +20,85 @@
  */
 :root {
 	/* ---- ページ ---- */
-	--theme-page-bg: #060606; /* ページ背景色 */
-	--theme-page-text: #e6edf3; /* ページ本文テキスト色 */
-	--theme-page-text-sub: #8b949e; /* ページ補足テキスト色 */
+	--theme-page-bg: #1e1e1e; /* ページ背景色 */
+	--theme-page-text: #cccccc; /* ページ本文テキスト色 */
+	--theme-page-text-sub: #858585; /* ページ補足テキスト色 */
 
 	/* ---- ページヘッダー ---- */
-	--theme-header-bg: #0a0a0a; /* ページヘッダー背景色 */
+	--theme-header-bg: #1f1f1f; /* ページヘッダー背景色 */
 
 	/* ---- ノーティスバー ---- */
-	--theme-notice-bar-bg: #202020; /* ノーティスバー背景色 */
-	--theme-notice-bar-border: #313131; /* ノーティスバーボーダー色 */
+	--theme-notice-bar-bg: #252526; /* ノーティスバー背景色 */
+	--theme-notice-bar-border: #3a3a3a; /* ノーティスバーボーダー色 */
 
 	/* ---- タブバー ---- */
-	--theme-tab-bar-bg: #151515; /* タブバー背景色 */
-	--theme-tab-active-bg: #0a0a0a; /* アクティブタブ・セクションヘッダー背景色 */
+	--theme-tab-bar-bg: #2d2d2d; /* タブバー背景色 */
+	--theme-tab-active-bg: #1e1e1e; /* アクティブタブ・セクションヘッダー背景色 */
 
 	/* ---- スプリットレイアウト ---- */
-	--theme-split-panel-bg: var(--theme-tab-active-bg); /* 左パネル背景色 */
-	--theme-split-list-bg: #151515; /* 左パネルリスト背景色 */
-	--theme-split-selected-bg: #0f1d33; /* リスト選択アイテム背景色 */
-	--theme-split-selected-border: rgba(63, 136, 185, 0.4); /* リスト選択アイテムボーダー色 */
-	--theme-split-selected-text: #3f88b9; /* リスト選択アイテムテキスト色 */
+	--theme-split-panel-bg: #1e1e1e; /* 左パネル背景色 */
+	--theme-split-list-bg: #1e1e1e; /* 左パネルリスト背景色 */
+	--theme-split-selected-bg: #094771; /* リスト選択アイテム背景色 */
+	--theme-split-selected-border: #007acc; /* リスト選択アイテムボーダー色 */
+	--theme-split-selected-text: #ffffff; /* リスト選択アイテムテキスト色 */
 
 	/* ---- ボタン ---- */
-	--theme-btn-bg: #414141; /* ボタン背景色 */
-	--theme-btn-text: #e6edf3; /* ボタン文字色 */
-	--theme-btn-disabled-bg: #151515; /* 非活性ボタン背景色 */
-	--theme-btn-disabled-text: #8b949e; /* 非活性ボタン文字色 */
+	--theme-btn-bg: #0078d4; /* ボタン背景色 */
+	--theme-btn-text: #ffffff; /* ボタン文字色 */
+	--theme-btn-disabled-bg: #3c3c3c; /* 非活性ボタン背景色 */
+	--theme-btn-disabled-text: #6c6c6c; /* 非活性ボタン文字色 */
 
 	/* ---- フォームフィールド ---- */
-	--theme-field-bg: #202020; /* フォームフィールド背景色 */
-	--theme-field-text: #e6edf3; /* フォームフィールドテキスト色 */
-	--theme-field-disabled-bg: #151515; /* 非活性・読み取り専用フィールド背景色 */
-	--theme-field-disabled-text: #8b949e; /* 非活性・読み取り専用フィールドテキスト色 */
-	--theme-field-label: #8b949e; /* フォームラベル文字色 */
-	--theme-field-label-note: #d29922; /* フォームラベル注記文字色 */
+	--theme-field-bg: #3c3c3c; /* フォームフィールド背景色 */
+	--theme-field-text: #cccccc; /* フォームフィールドテキスト色 */
+	--theme-field-disabled-bg: #2d2d2d; /* 非活性・読み取り専用フィールド背景色 */
+	--theme-field-disabled-text: #858585; /* 非活性・読み取り専用フィールドテキスト色 */
+	--theme-field-label: #cccccc; /* フォームラベル文字色 */
+	--theme-field-label-note: #d7a85f; /* フォームラベル注記文字色 */
 
 	/* ---- カードレイアウト ---- */
-	--theme-card-bg: #151515; /* カード背景色(ボディ) */
-	--theme-card-header-bg: #202020; /* カードヘッダー背景色 */
-	--theme-card-footer-bg: #060606; /* カードフッター背景色 */
-	--theme-card-border: rgba(141, 141, 141, 0.3); /* カードボーダー色 */
+	--theme-card-bg: #252526; /* カード背景色(ボディ) */
+	--theme-card-header-bg: #2d2d2d; /* カードヘッダー背景色 */
+	--theme-card-footer-bg: #1e1e1e; /* カードフッター背景色 */
+	--theme-card-border: rgba(82, 82, 82, 0.4); /* カードボーダー色 */
 
 	/* ---- ボーダー ---- */
-	--theme-border: #313131; /* 汎用ボーダー色 */
-	--theme-border-sub: #202020; /* 内部区切り線色 */
+	--theme-border: #3c3c3c; /* 汎用ボーダー色 */
+	--theme-border-sub: #2d2d2d; /* 内部区切り線色 */
 
 	/* ---- タグ ---- */
-	--theme-tag-bg: #009be2; /* タグ背景色 */
+	--theme-tag-bg: #0078d4; /* タグ背景色 */
 	--theme-tag-text: #ffffff; /* タグ文字色 */
-	--theme-tag-border: #009be2; /* タグボーダー色 */
+	--theme-tag-border: #0078d4; /* タグボーダー色 */
 
 	/* ---- アクセント ---- */
-	--theme-accent: #3f88b9; /* リンク・スピナー等汎用アクセント */
-	--theme-accent-bg: #0f1d33; /* アクセント背景色 */
+	--theme-accent: #0078d4; /* リンク・スピナー等汎用アクセント */
+	--theme-accent-bg: #094771; /* アクセント背景色 */
 
 	/* ---- 状態色: 情報・成功 ---- */
-	--theme-info: #3f88b9;
-	--theme-info-bg: #0f1d33;
+	--theme-info: #0078d4;
+	--theme-info-bg: #0c2d4a;
 
 	/* ---- 状態色: 通知・処理中 ---- */
-	--theme-notice: #22d231;
-	--theme-notice-bg: #0f331e;
+	--theme-notice: #23d18b;
+	--theme-notice-bg: #0d2e1f;
 
 	/* ---- 状態色: 警告 ---- */
-	--theme-warn: #d29922;
-	--theme-warn-bg: #271f10;
+	--theme-warn: #cca700;
+	--theme-warn-bg: #322800;
 
 	/* ---- 状態色: エラー ---- */
-	--theme-error: #f85149;
-	--theme-error-bg: #2d1419;
+	--theme-error: #f44747;
+	--theme-error-bg: #5a1d1d;
 
 	/* ---- 状態色: 非活性 ---- */
-	--theme-idle: #8d8d8d;
-	--theme-idle-bg: #3d3d3d;
+	--theme-idle: #6c6c6c;
+	--theme-idle-bg: #2d2d2d;
 
 	/* ---- 新規アイテム ---- */
-	--theme-new-item-bg: #0f1d33;
-	--theme-new-item-border: #3f88b9;
+	--theme-new-item-bg: #0c2d4a;
+	--theme-new-item-border: #0078d4;
 
 	/* ---- 特殊 ---- */
-	--theme-owner-avator: #607d8b;
+	--theme-owner-avator: #0078d4;
 }

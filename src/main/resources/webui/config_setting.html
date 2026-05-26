@@ -30,8 +30,15 @@
 
 		<!-- ヘッダー -->
 		<div class="header">
-			<span class="header-logo"></span>
-			<span class="header-title">Multi Agent Controller</span>
+			<img class="header-logo" src="image/logo.png" alt="" />
+			<nav class="header-nav">
+				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
+				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
+				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
+				<a href="/webui/config_setting.html" class="header-nav-item header-nav-active">設定</a>
+			</nav>
+			<span id="header-project-name" class="header-project-name"></span>
 		</div>
 
 		<!-- ノーティスバー -->
@@ -53,19 +60,10 @@
 		<!-- 情報メッセージパネル -->
 		<div id="page-message-info" class="page-message-info" style="display: none"></div>
 
-		<!-- タブバー -->
-		<div class="tab-bar">
-			<a href="/webui/project_setting.html" class="tab-item">プロジェクト</a>
-			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
-			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
-			<a href="/webui/log_view.html" class="tab-item tab-requires-project">ログ</a>
-			<a href="/webui/config_setting.html" class="tab-item tab-active">設定</a>
-			<span id="header-project-name" class="tab-project-name"></span>
-		</div>
 
 		<!-- 設定ページヘッダー(保存ボタン) -->
-		<div class="split-right-header">
-			<span class="split-right-title">環境設定</span>
+		<div class="content-header">
+			<span class="content-title"></span>
 			<div class="btn-row">
 				<button id="btn-save" type="button" class="btn btn-primary">保存</button>
 			</div>

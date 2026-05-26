@@ -1,5 +1,6 @@
 package org.ideaccum.ai.orchestrator;
 
+import java.net.BindException;
 import java.nio.file.Path;
 
 import org.ideaccum.ai.orchestrator.context.Config;
@@ -38,26 +39,34 @@ public final class Bootstrap implements Constants {
 	 * @throws Throwable 処理実行時に予期せぬエラーが発生した場合にスローされます
 	 */
 	public static void main(String[] args) throws Throwable {
+		/*
+		 * 環境設定情報読み込み(ファイルが存在しない場合はデフォルト設定から自動生成)
+		 */
+		Config config = null;
 		try {
-			/*
-			 * 環境設定情報読み込み(ファイルが存在しない場合はデフォルト設定から自動生成)
-			 */
 			String configFile = args != null && args.length >= 1 ? args[0] : CONFIG_FILE;
-			Config config = new Config(Path.of(configFile));
+			config = new Config(Path.of(configFile));
+		} catch (Throwable e) {
+			System.err.println("予期せぬエラーが発生しました、詳細はログを確認してください。");
+			log.error("予期せぬエラーが発生したため、アプリケーションを終了します。", e);
+			System.exit(1);
+		}
 
-			/*
-			 * Webインタフェースサーバー起動
-			 */
+		/*
+		 * Webインタフェースサーバー起動／実質永久ループ
+		 */
+		try {
 			AgentWebUIServer webuiServer = new AgentWebUIServer(config);
 			Runtime.getRuntime().addShutdownHook(new Thread(webuiServer::destroy));
 			webuiServer.start();
 			log.info("Webインタフェースサーバーを起動しました。");
-
-			/*
-			 * 実質永久ループ
-			 */
 			Thread.sleep(Long.MAX_VALUE);
+		} catch (BindException e) {
+			System.err.println("WebUIポートをオープンすることができません、詳細はログを確認してください。");
+			log.error("WebUIポートを正常にオープンできませんでした(" + config.getApplicationWebuiPort() + ")。", e);
+			System.exit(1);
 		} catch (Throwable e) {
+			System.err.println("予期せぬエラーが発生しました、詳細はログを確認してください。");
 			log.error("予期せぬエラーが発生したため、アプリケーションを終了します。", e);
 			System.exit(1);
 		} finally {

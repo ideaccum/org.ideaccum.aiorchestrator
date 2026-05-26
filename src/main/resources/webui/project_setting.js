@@ -91,6 +91,35 @@ class ProjectSettingController {
 				document.getElementById("project-name-input").value = this.#editingName;
 				document.getElementById("project-name-input").style.display = "";
 				document.getElementById("project-title-input").focus();
+
+				/*
+				 * 統計情報表示(常時表示・会話なし時はデフォルト値)
+				 */
+				document.getElementById("form-row-stat-tokens").style.display = "";
+				document.getElementById("form-row-stat-turns").style.display = "";
+				document.getElementById("form-row-stat-duration").style.display = "";
+				const turnCount = project?.turnCount ?? 0;
+				document.getElementById("project-stat-duration").textContent = Utils.formatDurationSec(project?.durationSec ?? 0);
+				document.getElementById("project-stat-turns").textContent = `${turnCount} ターン`;
+				document.getElementById("project-stat-tokens").textContent = (project?.totalTokens ?? 0).toLocaleString() + " トークン";
+
+				/*
+				 * エージェント別トークン内訳
+				 */
+				const agentTokens = project?.agentTokens ?? [];
+				document.getElementById("form-section-agent-tokens").style.display = "";
+				const agentRowsEl = document.getElementById("project-stat-agent-tokens-rows");
+				agentRowsEl.innerHTML = agentTokens.length > 0
+					? agentTokens.map((agent) => {
+						const parts = [agent.type, agent.model].filter(Boolean).join(" ");
+						const label = parts ? `${Utils.esc(agent.name)} （${Utils.esc(parts)}）` : Utils.esc(agent.name);
+						return `
+						<div class="form-row">
+							<label class="form-label">${label}</label>
+							<span class="input-field-readonly">${Number(agent.tokens).toLocaleString()} トークン</span>
+						</div>`;
+					}).join("")
+					: `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
 			} else {
 				document.getElementById("btn-select-project").style.display = "none";
 				document.getElementById("project-title-input").value = "";
@@ -98,6 +127,14 @@ class ProjectSettingController {
 				document.getElementById("project-detail-name").style.display = "none";
 				document.getElementById("project-name-input").value = "";
 				document.getElementById("project-name-input").style.display = "";
+				document.getElementById("form-row-stat-duration").style.display = "";
+				document.getElementById("form-row-stat-turns").style.display = "";
+				document.getElementById("form-row-stat-tokens").style.display = "";
+				document.getElementById("form-section-agent-tokens").style.display = "";
+				document.getElementById("project-stat-duration").textContent = "0分0秒";
+				document.getElementById("project-stat-turns").textContent = "0 ターン";
+				document.getElementById("project-stat-tokens").textContent = "0 トークン";
+				document.getElementById("project-stat-agent-tokens-rows").innerHTML = `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
 				/*
 				 * エージェントテンプレート選択行は新規作成時のみ表示(複写時は非表示)
 				 */
@@ -202,11 +239,17 @@ class ProjectSettingController {
 					elProjectItem.className = "list-item";
 					elProjectItem.dataset.project = project.name;
 					elProjectItem.innerHTML = `
+						<div class="list-item-icon">${Constants.ICON_PROJECT}</div>
 						<div class="list-item-content">
 							<div class="list-item-ali-info">
 								<span class="list-item-ali-label">${Utils.esc(project.name)}</span>
 								<span class="list-item-ali-caption">${Utils.esc(project.title || "")}</span>
 								${project.name === this.#currentProject ? '<span class="tag">ACTIVE</span>' : ""}
+							</div>
+							<div class="list-item-ali-meta">
+								<span>${Utils.formatDurationSec(project.durationSec ?? 0)}</span>・
+								<span>${project.turnCount ?? 0} ターン</span>・
+								<span>${(project.totalTokens ?? 0) > 0 ? (project.totalTokens).toLocaleString() : "0"} トークン</span>
 							</div>
 							</div>
 						<button class="list-item-copy-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="複写">

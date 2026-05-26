@@ -15,3 +15,15 @@
  */
 :root {
 }
+
+/* ---- エージェントトークン内訳セクション ---- */
+#form-section-agent-tokens {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-normal);
+}
+#project-stat-agent-tokens-rows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-normal);
+}

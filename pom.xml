@@ -101,8 +101,9 @@
 						</goals>
 						<configuration>
 							<target>
+								<mkdir dir="${project.basedir}/builded"/>
 								<copy file="${project.build.directory}/${project.artifactId}-${project.version}-executable.jar"
-									  tofile="${project.basedir}/aiorch.jar" overwrite="true"/>
+									  tofile="${project.basedir}/builded/aiorch.jar" overwrite="true"/>
 							</target>
 						</configuration>
 					</execution>

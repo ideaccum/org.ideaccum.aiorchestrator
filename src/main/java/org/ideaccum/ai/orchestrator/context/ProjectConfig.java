@@ -107,23 +107,4 @@ public class ProjectConfig {
 		String key = "project.title";
 		properties.setProperty(key, title);
 	}
-
-	/**
-	 * タスクプロンプトを取得します。<br>
-	 * @return タスクプロンプト
-	 */
-	public String getPrompt() {
-		String key = "project.prompt";
-		String raw = properties.getProperty(key);
-		return raw;
-	}
-
-	/**
-	 * タスクプロンプトを設定します。<br>
-	 * @param prompt タスクプロンプト
-	 */
-	public void setPrompt(String prompt) {
-		String key = "project.prompt";
-		properties.setProperty(key, prompt);
-	}
 }

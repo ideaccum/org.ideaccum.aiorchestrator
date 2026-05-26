@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.ideaccum.ai.orchestrator.agent.AgentAdapter;
 import org.ideaccum.ai.orchestrator.agent.AgentConfig;
@@ -118,6 +119,14 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 	 * @throws Throwable 準備処理で予期せぬエラーが発生した場合にスローされます
 	 */
 	protected abstract void prepare() throws Throwable;
+
+	/**
+	 * エージェントからのエラーレスポンスを抽出します。<br>
+	 * このレスポンスがあった場合は後続処理は中断されます。<br>
+	 * @param response エージェントレスポンス
+	 * @return エラーメッセージ
+	 */
+	protected abstract String lookupError(String response);
 
 	/**
 	 * エージェントからの実行進捗レスポンスを抽出します。<br>
@@ -242,6 +251,11 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 
 		try {
 			/*
+			 * トークン使用量リセット(前回実行の累積を持ち越さない)
+			 */
+			this.tokenUsage = new TokenUsage();
+
+			/*
 			 * 事前準備処理
 			 */
 			prepare();
@@ -290,6 +304,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			 * コマンドレスポンス処理
 			 */
 			StringBuilder result = new StringBuilder();
+			AtomicBoolean lookupedError = new AtomicBoolean(false);
 			ExecutorService executor = Executors.newSingleThreadExecutor();
 			executor.submit(() -> {
 				try (InputStream is = process.getInputStream(); InputStreamReader isr = new InputStreamReader(is); BufferedReader reader = new BufferedReader(isr)) {
@@ -299,6 +314,19 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 						 * 生データダンプ
 						 */
 						OutputUtils.outputResponseDump(context, getName(), response);
+						if (lookupedError.get()) {
+							continue;
+						}
+
+						/*
+						 * エラーメッセージ取得
+						 */
+						String error = lookupError(response);
+						if (error != null) {
+							AgentWebUIEventController.instance().publishError(getName(), error);
+							lookupedError.set(true);
+							continue;
+						}
 
 						/*
 						 * 実行進捗メッセージ取得
@@ -352,16 +380,27 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			executor.shutdown();
 			if (!finished) {
 				process.destroyForcibly();
-				return AgentResult.error(getName(), "タイムアウト(" + context.getConfig().getAgentTimeout() + "秒)");
+				String timeoutMessage = "タイムアウト(" + context.getConfig().getAgentTimeout() + "秒)";
+				AgentWebUIEventController.instance().publishError(getName(), timeoutMessage);
+				return AgentResult.error(getName(), timeoutMessage);
 			}
 
 			// プロセス終了後もリーダースレッドが最終チャンクを result に書き込み中の場合があるため完了を待機する
 			executor.awaitTermination(10, TimeUnit.SECONDS);
 
+			// プロセス異常終了かつ出力からエラーを検出していない場合はエラー通知
+			int exitCode = process.exitValue();
+			if (exitCode != 0 && !lookupedError.get() && result.length() == 0) {
+				String exitMessage = "エージェントプロセスが異常終了しました(終了コード: " + exitCode + ")";
+				AgentWebUIEventController.instance().publishError(getName(), exitMessage);
+				return AgentResult.error(getName(), exitMessage);
+			}
+
 			long elapsed = System.currentTimeMillis() - start;
 			return AgentResult.success(getName(), result.toString(), elapsed, tokenUsage);
 		} catch (Throwable e) {
 			Thread.currentThread().interrupt();
+			AgentWebUIEventController.instance().publishError(getName(), e.getMessage());
 			return AgentResult.error(getName(), e.getMessage());
 		} finally {
 			try {

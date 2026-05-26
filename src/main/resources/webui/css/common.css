@@ -52,6 +52,7 @@
 	--radius-lg: 0.55em; /* 大角丸: エージェントカード等 */
 
 	/* ---- 共通コンポーネントサイズ ---- */
+	--size-header-logo: 1rem; /* ヘッダーロゴサイズ(16px) */
 	--size-spinner: 2em; /* ローディングスピナー直径 */
 	--size-notice-spinner: 1.1em; /* ノーティスバー内スピナー直径 */
 	--size-statusdot: 0.65em; /* エージェントカードステータスドット直径 */
@@ -62,8 +63,9 @@
 	--weight-notice-spinner: 0.15em; /* ノーティスバー内スピナーボーダー幅 */
 
 	/* ---- レイアウトサイズ ---- */
+	--h-header: 1.875rem; /* ヘッダー高さ */
+	--h-content-header: 2.5rem; /* コンテンツヘッダー高さ */
 	--w-split-left: 22em; /* 左右分割左ペイン幅 */
-	--h-split-header: 2.8rem; /* 左右分割ペインヘッダー行高さ */
 	--w-single-layout: 80vw; /* 単一レイアウト幅 */
 	--h-card-body: 15em; /* カード本文固定高さ */
 	--h-card-owner-body: 6em; /* オーナーカード本文固定高さ */
@@ -84,16 +86,16 @@
 	--sp-tab-bar-b: 0; /* タブバー下パディング */
 	--sp-tab-item-v: 0.5em; /* タブアイテム縦パディング */
 	--sp-tab-item-h: 1em; /* タブアイテム横パディング */
-	--sp-notice-bar-v: 0.5em; /* ノーティスバー縦パディング */
-	--sp-notice-bar-h: 0.5em; /* ノーティスバー横パディング */
-	--sp-page-message-v: 0.5em; /* ページメッセージ縦パディング */
-	--sp-page-message-h: 0.5em; /* ページメッセージ横パディング */
+	--sp-notice-bar-v: 0.3em; /* ノーティスバー縦パディング */
+	--sp-notice-bar-h: 0.3em; /* ノーティスバー横パディング */
+	--sp-page-message-v: 0.3em; /* ページメッセージ縦パディング */
+	--sp-page-message-h: 0.3em; /* ページメッセージ横パディング */
 	--sp-form-v: 1.2em; /* フォーム全体縦パディング */
 	--sp-form-h: 1.2em; /* フォーム全体横パディング */
-	--sp-input-v: 0.5em; /* 入力フィールド縦パディング */
-	--sp-input-h: 0.7em; /* 入力フィールド横パディング */
-	--sp-list-item-v: 0.5em; /* リストアイテム縦パディング */
-	--sp-list-item-h: 0.7em; /* リストアイテム横パディング */
+	--sp-input-v: 0.4em; /* 入力フィールド縦パディング */
+	--sp-input-h: 0.6em; /* 入力フィールド横パディング */
+	--sp-list-item-v: 0.2em; /* リストアイテム縦パディング */
+	--sp-list-item-h: 0.6em; /* リストアイテム横パディング */
 	--sp-list-item-mb: 0.2em; /* リストアイテム下マージン */
 	--sp-list-item-ali-meta-t: 0.1em; /* アイテム内メタ行上マージン */
 	--sp-list-item-ali-empty-v: 1.5em; /* アイテム空状態縦パディング */
@@ -104,6 +106,8 @@
 	--sp-btn-sm-h: 0.8em; /* 小ボタン横パディング */
 	--sp-card-v: 0.6em; /* カードセクション縦パディング */
 	--sp-card-h: 0.9em; /* カードセクション横パディング */
+	--sp-content-header-v: 0.6em; /* コンテンツヘッダー縦パディング */
+	--sp-content-header-h: 0.9em; /* コンテンツヘッダー横パディング */
 	--sp-body-v: 0.6em; /* カード本文縦パディング */
 	--sp-body-h: 0.6em; /* カード本文横パディング */
 	--sp-footer-v: 0.35em; /* カードフッター縦パディング */

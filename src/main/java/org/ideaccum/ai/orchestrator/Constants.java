@@ -53,6 +53,9 @@ public interface Constants {
 	/** リソースパス:エージェントテンプレート(フルスタック) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_FULLSTACK = "/template-agents/fullstack";
 
+	/** リソースパス:エージェントテンプレート(通常タスク) */
+	public static final String RESOURCE_TEMPLATE_AGENTS_MIDDLE = "/template-agents/middle";
+
 	/** リソースパス:エージェントテンプレート(ライト(Claude)) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE = "/template-agents/light-claude";
 

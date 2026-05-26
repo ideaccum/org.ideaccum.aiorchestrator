@@ -11,8 +11,10 @@ import java.util.regex.Pattern;
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.Agent;
 import org.ideaccum.ai.orchestrator.agent.AgentResult;
+import org.ideaccum.ai.orchestrator.agent.AgentResultType;
 import org.ideaccum.ai.orchestrator.agent.AgentRunner;
 import org.ideaccum.ai.orchestrator.context.Context;
+import org.ideaccum.ai.orchestrator.context.Conversation;
 import org.ideaccum.ai.orchestrator.webui.AgentWebUIEventController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,8 +113,19 @@ public class Orchestrator implements Constants {
 					// エージェントセッションID保存
 					context.getSessions().add(agent.getName(), agent.getSessionId(), result.getUsage());
 
-					// エージェント会話ログ保存
-					context.getConversations().add(agent.getName(), result.getResponse(), result.getUsage());
+					// エージェント会話ログ保存(コマンドラインレベルのエラーは記録しない)
+					if (result.getType() != AgentResultType.ERROR) {
+						context.getConversations().add(agent.getName(), result.getResponse(), result.getUsage());
+					}
+
+					// エージェント処理完了イベント発行(累計トークン数を会話ログから算出して通知)
+					long cumulativeTokens = 0;
+					for (Conversation conversation : context.getConversations().getAll()) {
+						if (agent.getName().equals(conversation.getAgentName()) && conversation.getTokenUsage() != null) {
+							cumulativeTokens += conversation.getTokenUsage().getTotalTokens();
+						}
+					}
+					AgentWebUIEventController.instance().publishFinishCumulative(agent, cumulativeTokens, result.getElapsedTime());
 
 					// エージェント会話合意状態取得(CR/LF/CRLF の違いに対応してtrimで比較)
 					String consensusKeyword = context.getConfig().getAgentFinalizeKeyword();

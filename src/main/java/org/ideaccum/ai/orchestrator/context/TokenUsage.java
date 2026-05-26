@@ -32,28 +32,22 @@ public class TokenUsage implements Constants, Serializable {
 	@JsonProperty
 	private long outputTokens;
 
-	/** その他発生トークン数 */
-	@JsonProperty
-	private long otherTokens;
-
 	/**
 	 * コンストラクタ<br>
 	 * @param inputTokens 入力トークン数
 	 * @param outputTokens 出力トークン数 
-	 * @param othrerTokens その他発生トークン数
 	 */
-	public TokenUsage(long inputTokens, long outputTokens, long othrerTokens) {
+	public TokenUsage(long inputTokens, long outputTokens) {
 		super();
 		this.inputTokens = inputTokens;
 		this.outputTokens = outputTokens;
-		this.otherTokens = othrerTokens;
 	}
 
 	/**
 	 * コンストラクタ<br>
 	 */
 	public TokenUsage() {
-		this(0, 0, 0);
+		this(0, 0);
 	}
 
 	/**
@@ -62,10 +56,9 @@ public class TokenUsage implements Constants, Serializable {
 	 * @param outputTokens 出力トークン数 
 	 * @param othrerTokens その他発生トークン数
 	 */
-	public void add(long inputTokens, long outputTokens, long othrerTokens) {
+	public void add(long inputTokens, long outputTokens) {
 		this.inputTokens += inputTokens;
 		this.outputTokens += outputTokens;
-		this.otherTokens += othrerTokens;
 	}
 
 	/**
@@ -78,7 +71,6 @@ public class TokenUsage implements Constants, Serializable {
 		}
 		this.inputTokens += usage.inputTokens;
 		this.outputTokens += usage.outputTokens;
-		this.otherTokens += usage.otherTokens;
 	}
 
 	/**
@@ -98,18 +90,10 @@ public class TokenUsage implements Constants, Serializable {
 	}
 
 	/**
-	 * 使用トークン量を返却します。<br>
-	 * @return 使用トークン量
-	 */
-	public long getOtherTokens() {
-		return otherTokens;
-	}
-
-	/**
 	 * 合計トークン数を返却します。<br>
 	 * @return 合計トークン数(入力トークン数+出力トークン数+その他発生トークン数)
 	 */
 	public long getTotalTokens() {
-		return inputTokens + outputTokens + otherTokens;
+		return inputTokens + outputTokens;
 	}
 }

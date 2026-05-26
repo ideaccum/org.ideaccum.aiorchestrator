@@ -190,4 +190,25 @@ class Utils {
 			.replace(/>/g, "&gt;") //
 			.replace(/"/g, "&quot;"); //
 	}
+
+	/**
+	 * 秒数を "h時間m分s秒" 形式の文字列に変換します。
+	 * @param {number} sec - 秒数
+	 * @returns {string}
+	 */
+	static formatDurationSec(sec) {
+		if (!sec || sec <= 0) {
+			return "0分0秒";
+		}
+		const h = Math.floor(sec / 3600);
+		const m = Math.floor((sec % 3600) / 60);
+		const s = sec % 60;
+		if (h > 0) {
+			return `${h}時間${m}分`;
+		}
+		if (m > 0) {
+			return `${m}分${s}秒`;
+		}
+		return `${s}秒`;
+	}
 }

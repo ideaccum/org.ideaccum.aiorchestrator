@@ -27,6 +27,7 @@ import tools.jackson.databind.JsonNode;
  *<!--
  * 更新日		更新者		更新内容
  * 2026/03/31	Kitagawa	新規作成
+ * 2026/05/26	Kitagawa	トークン集計不具合を修正
  *-->
  */
 public class GeminiCliAgent extends AbstractCliAgent {
@@ -98,6 +99,30 @@ public class GeminiCliAgent extends AbstractCliAgent {
 	}
 
 	/**
+	 * エージェントからのエラーレスポンスを抽出します。<br>
+	 * このレスポンスがあった場合は後続処理は中断されます。<br>
+	 * @param response エージェントレスポンス
+	 * @return エラーメッセージ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupError(java.lang.String)
+	 */
+	protected String lookupError(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		String result = null;
+		try {
+			if (response.startsWith("Error authenticating")) {
+				result = "認証が行われていません。";
+			}
+
+			return result;
+		} catch (Throwable e) {
+			System.err.println("[ERROR] " + response);
+			return response;
+		}
+	}
+
+	/**
 	 * エージェントからの実行進捗レスポンスを抽出します。<br>
 	 * @param response エージェントレスポンス
 	 * @return 実行進捗メッセージ
@@ -128,10 +153,10 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			if(response.indexOf("tool_use")>=0) {
+			if (response.indexOf("tool_use") >= 0) {
 				System.out.println("***");
 			}
-			
+
 			JsonNode node = MAPPER.readTree(response);
 			String type = node.path("type").asString();
 
@@ -289,27 +314,41 @@ public class GeminiCliAgent extends AbstractCliAgent {
 		try {
 			JsonNode node = MAPPER.readTree(response);
 
-			// typeがresult以外は解析スキップ
-			if (!"result".equals(node.path("type").asString())) {
+			// エラーのみレスポンスはスキップ("error" フィールドが存在し、"response"が空の場合)
+			JsonNode errorNode = node.path("error");
+			if (!errorNode.isMissingNode() && !errorNode.isNull()) {
+				JsonNode responseNode = node.path("response");
+				if (responseNode.isMissingNode() || responseNode.isNull() || responseNode.asString("").isEmpty()) {
+					return null;
+				}
+			}
+
+			// stats.modelsが存在しない場合はスキップ
+			JsonNode modelsNode = node.path("stats").path("models");
+			if (modelsNode.isMissingNode() || modelsNode.isNull()) {
 				return null;
 			}
 
-			// トークンノードがない場合はスキップ
-			if (false //
-					|| node.path("stats").path("input_tokens").isMissingNode() //
-					|| node.path("stats").path("output_tokens").isMissingNode() //
-					|| node.path("stats").path("total_tokens").isMissingNode() //
-			) {
-				return null;
+			// カテゴリごとトークン合算
+			long promptTokens = 0L; // 入力
+			long candidateTokens = 0L; // 出力
+			long thoughtsTokens = 0L; // 思考(課金対象・出力扱い)
+			for (JsonNode modelNode : modelsNode) {
+				JsonNode tokens = modelNode.path("tokens");
+				if (tokens.isMissingNode() || tokens.isNull()) {
+					continue;
+				}
+				promptTokens += tokens.path("prompt").asLong(0L);
+				candidateTokens += tokens.path("candidates").asLong(0L);
+				thoughtsTokens += tokens.path("thoughts").asLong(0L);
+				// cachedはpromptのサブセットなので加算不要
+				// toolはtotalに含まれるので加算不要
 			}
 
-			// トークン情報取得
-			long inputToken = node.path("stats").path("input_tokens").asLong();
-			long outputToken = node.path("stats").path("output_tokens").asLong();
-			long totalToken = node.path("stats").path("total_tokens").asLong();
-			long otherToken = totalToken - inputToken - outputToken;
+			long inputTokens = promptTokens;
+			long outputTokens = candidateTokens + thoughtsTokens;
 
-			TokenUsage result = new TokenUsage(inputToken, outputToken, otherToken);
+			TokenUsage result = new TokenUsage(inputTokens, outputTokens);
 
 			return result;
 		} catch (Throwable e) {

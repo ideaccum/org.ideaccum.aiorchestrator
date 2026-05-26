@@ -83,12 +83,12 @@ class LogViewController {
 				const prevConv = index > 0 ? conversations[index - 1] : null;
 				const elapsed = LogViewController.#calcElapsed(prevConv?.timestamp, conv.timestamp);
 
+				const isOwner = conv.agentName === Constants.OWNER_AGENT_NAME;
 				const inTokens = conv.tokenUsage?.inputTokens || 0;
 				const outTokens = conv.tokenUsage?.outputTokens || 0;
 				const totalTokens = inTokens + outTokens;
-				const tokenText = conv.tokenUsage ? totalTokens.toLocaleString() + " tokens (in: " + inTokens.toLocaleString() + " / out: " + outTokens.toLocaleString() + ")" : "—";
+				const tokenText = isOwner ? "User Prompt" : conv.tokenUsage ? totalTokens.toLocaleString() + " Tokens (IN: " + inTokens.toLocaleString() + " / OUT: " + outTokens.toLocaleString() + ")" : "—";
 
-				const isOwner = conv.agentName === Constants.OWNER_AGENT_NAME;
 				const turn = document.createElement("div");
 				turn.className = "log-turn" + (isOwner ? " is-owner" : "");
 

@@ -30,7 +30,15 @@
 
 		<!-- ヘッダー -->
 		<div class="header">
-			<span class="header-title">Multi Agent Controller</span>
+			<img class="header-logo" src="image/logo.png" alt="" />
+			<nav class="header-nav">
+				<a href="/webui/project_setting.html" class="header-nav-item header-nav-active">プロジェクト</a>
+				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
+				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
+				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
+			</nav>
+			<span id="header-project-name" class="header-project-name"></span>
 		</div>
 
 		<!-- ノーティスバー -->
@@ -52,15 +60,6 @@
 		<!-- 情報メッセージパネル -->
 		<div id="page-message-info" class="page-message-info" style="display: none"></div>
 
-		<!-- タブバー -->
-		<div class="tab-bar">
-			<a href="/webui/project_setting.html" class="tab-item tab-active">プロジェクト</a>
-			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project">エージェント</a>
-			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
-			<a href="/webui/log_view.html" class="tab-item tab-requires-project">ログ</a>
-			<a href="/webui/config_setting.html" class="tab-item">設定</a>
-			<span id="header-project-name" class="tab-project-name"></span>
-		</div>
 
 		<!-- メインコンテンツ(左右分割パネル) -->
 		<div class="split-layout">
@@ -88,7 +87,7 @@
 				</div>
 
 				<!-- 右ペインヘッダー -->
-				<div id="project-form-header" class="split-right-header" style="display: none">
+				<div id="project-form-header" class="content-header" style="display: none">
 					<div class="btn-row">
 						<button id="btn-select-project" type="button" class="btn btn-run">選択</button>
 					</div>
@@ -113,11 +112,29 @@
 						<label class="form-label" for="project-agent-template-input">エージェントテンプレート</label>
 						<select id="project-agent-template-input" class="input-field form-select">
 							<option value="">(テンプレートなし)</option>
+							<option value="middle">通常タスク向け</option>
 							<option value="light_claude">単純タスク向け(Claude)</option>
 							<option value="light_codex">単純タスク向け(Codex)</option>
 							<option value="light_gemini">単純タスク向け(Gemini)</option>
 							<option value="fullstack">精密タスク向け</option>
 						</select>
+					</div>
+					<div class="form-section-label">プロジェクト実行実績</div>
+					<div id="form-row-stat-duration" class="form-row" style="display: none">
+						<label class="form-label">ターン合計時間</label>
+						<span id="project-stat-duration" class="input-field-readonly"></span>
+					</div>
+					<div id="form-row-stat-turns" class="form-row" style="display: none">
+						<label class="form-label">会話ターン数</label>
+						<span id="project-stat-turns" class="input-field-readonly"></span>
+					</div>
+					<div id="form-row-stat-tokens" class="form-row" style="display: none">
+						<label class="form-label">消費トークン数</label>
+						<span id="project-stat-tokens" class="input-field-readonly"></span>
+					</div>
+					<div id="form-section-agent-tokens" style="display: none">
+						<div class="form-section-label">エージェント消費トークン内訳</div>
+						<div id="project-stat-agent-tokens-rows"></div>
 					</div>
 				</div>
 			</div>

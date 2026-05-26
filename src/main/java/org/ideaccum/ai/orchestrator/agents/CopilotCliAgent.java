@@ -87,6 +87,27 @@ public class CopilotCliAgent extends AbstractCliAgent {
 	}
 
 	/**
+	 * エージェントからのエラーレスポンスを抽出します。<br>
+	 * このレスポンスがあった場合は後続処理は中断されます。<br>
+	 * @param response エージェントレスポンス
+	 * @return エラーメッセージ
+	 * @see org.ideaccum.ai.orchestrator.agents.AbstractCliAgent#lookupError(java.lang.String)
+	 */
+	protected String lookupError(String response) {
+		if (response == null || response.isBlank()) {
+			return null;
+		}
+		String result = null;
+		try {
+
+			return result;
+		} catch (Throwable e) {
+			System.err.println("[ERROR] " + response);
+			return response;
+		}
+	}
+
+	/**
 	 * エージェントからの実行進捗レスポンスを抽出します。<br>
 	 * @param response エージェントレスポンス
 	 * @return 実行進捗メッセージ
@@ -236,18 +257,24 @@ public class CopilotCliAgent extends AbstractCliAgent {
 		try {
 			JsonNode node = MAPPER.readTree(response);
 
-			// トークンノードがない場合はスキップ
-			if (false //
-					|| node.path("data").path("outputTokens").isMissingNode() //
-			) {
+			String type = node.path("type").asString("");
+
+			// type=assistant.usage以外の場合はスキップ
+			if (!"assistant.usage".equals(type)) {
 				return null;
 			}
 
-			// トークン情報取得
-			long inputToken = 0; // 取得方法不明
-			long outputToken = node.path("data").path("outputTokens").asLong();
+			// dataノードが存在しない場合はスキップ
+			JsonNode data = node.path("data");
+			if (data.isMissingNode() || data.isNull()) {
+				return null;
+			}
 
-			TokenUsage result = new TokenUsage(inputToken, outputToken, 0);
+			// ターンごとトークン集計
+			long inputTokens = data.path("inputTokens").asLong(0L);
+			long outputTokens = data.path("outputTokens").asLong(0L);
+
+			TokenUsage result = new TokenUsage(inputTokens, outputTokens);
 
 			return result;
 		} catch (Throwable e) {

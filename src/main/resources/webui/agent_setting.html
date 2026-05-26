@@ -30,7 +30,15 @@
 
 		<!-- ヘッダー -->
 		<div class="header">
-			<span class="header-title">Multi Agent Controller</span>
+			<img class="header-logo" src="image/logo.png" alt="" />
+			<nav class="header-nav">
+				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
+				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project header-nav-active">エージェント</a>
+				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
+				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
+			</nav>
+			<span id="header-project-name" class="header-project-name"></span>
 		</div>
 
 		<!-- ノーティスバー -->
@@ -52,15 +60,6 @@
 		<!-- 情報メッセージパネル -->
 		<div id="page-message-info" class="page-message-info" style="display: none"></div>
 
-		<!-- タブバー -->
-		<div class="tab-bar">
-			<a href="/webui/project_setting.html" class="tab-item">プロジェクト</a>
-			<a href="/webui/agent_setting.html" class="tab-item tab-requires-project tab-active">エージェント</a>
-			<a href="/webui/process_controller.html" class="tab-item tab-requires-project">コントローラー</a>
-			<a href="/webui/log_view.html" class="tab-item tab-requires-project">ログ</a>
-			<a href="/webui/config_setting.html" class="tab-item">設定</a>
-			<span id="header-project-name" class="tab-project-name"></span>
-		</div>
 
 		<!-- メインコンテンツ(左右分割パネル) -->
 		<div class="split-layout">
@@ -76,9 +75,8 @@
 			<!-- 右パネル(エージェント設定) -->
 			<div class="split-right">
 				<!-- 右ペインヘッダー -->
-				<div id="agent-form-header" class="split-right-header" style="display: none">
+				<div id="agent-form-header" class="content-header" style="display: none">
 					<div class="form-header-leading">
-						<span class="split-right-title">エージェント設定</span>
 						<span id="session-exists-note" class="form-header-note" style="display: none">既にセッションが存在するため変更するため、一部の項目は変更することができません</span>
 					</div>
 					<div class="btn-row">

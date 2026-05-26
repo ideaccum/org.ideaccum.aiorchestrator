@@ -291,6 +291,7 @@ class ProcessController {
 				currentText: null,
 				currentRaw: "",
 				turnCount: 0,
+				totalTokens: 0,
 			};
 		} catch (e) {
 			Utils.catchFatal(e);
@@ -520,7 +521,10 @@ class ProcessController {
 			}
 			card.el.classList.remove("is-processing", "is-error");
 			card.el.classList.add("is-done");
-			card.tokensEl.textContent = tokenUsage != null ? "Tokens: " + Number(tokenUsage).toLocaleString("ja-JP") : "Tokens: -";
+			if (tokenUsage != null) {
+				card.totalTokens = Number(tokenUsage);
+			}
+			card.tokensEl.textContent = card.totalTokens > 0 ? "Tokens: " + card.totalTokens.toLocaleString("ja-JP") : "Tokens: -";
 			card.turnElapsed.textContent = elapsedTime != null ? "Time: " + (elapsedTime / 1000).toFixed(1) + "s" : "Time: -";
 
 			/*

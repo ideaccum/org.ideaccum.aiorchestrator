@@ -93,7 +93,7 @@ public interface Constants {
 
 	/** エージェント:タスクディスパッチキーワードパターン */
 	//public static final String AGENT_DISPATH_REGEX ="【タスクディスパッチ:([^】]+)】";
-	public static final String AGENT_DISPATH_REGEX = "<<<< Task Dispatch : '([^']+)' >>>>";
+	public static final String AGENT_DISPATH_REGEX = "<<<< Task Dispatch : '?([^'<>]+?)'? >>>>";
 
 	/** エージェント:タスクディスパッチキーワードパターン */
 	//public static final String AGENT_DISPATH_REGEX ="【タスクディスパッチ:([^】]+)】";

@@ -182,7 +182,7 @@ public class Conversation implements Constants, Serializable {
 		Pattern pattern = context.getConfig().getAgentDispatchKeywordPattern();
 		Matcher matcher = pattern.matcher(content);
 		while (matcher.find()) {
-			String agentName = matcher.group(1);
+			String agentName = matcher.group(1).trim();
 			Agent agent = context.getAgent(agentName);
 			if (agent != null) {
 				result.add(agent);

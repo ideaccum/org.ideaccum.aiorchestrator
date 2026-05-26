@@ -40,7 +40,7 @@
 
 	/* ---- ボーダー ---- */
 	--border-width: 1px; /* 標準ボーダー幅 */
-	--border-field-width: 0; /* フォームフィールドボーダー幅 */
+	--border-field-width: 1px; /* フォームフィールドボーダー幅 */
 
 	/* ---- 角丸 ---- */
 	--radius-thin-scrollbar: 0.2em; /* 細スクロールバー角丸 */
@@ -194,6 +194,9 @@
 
 	/* ---- ページヘッダー ---- */
 	--color-header-bg: var(--theme-header-bg); /* ページヘッダー背景色 */
+	--color-header-nav-text: var(--theme-header-nav-text); /* ヘッダーナビゲーション文字色 */
+	--color-header-nav-text-active: var(--theme-header-nav-text-active); /* ヘッダーナビゲーション文字色(アクティブ) */
+	--color-header-nav-bg-hover: var(--theme-header-nav-bg-hover); /* ヘッダーナビゲーション背景色(ホバー) */
 
 	/* ---- ノーティスバー ---- */
 	--color-notice-bar-bg: var(--theme-notice-bar-bg); /* ノーティスバー背景色 */

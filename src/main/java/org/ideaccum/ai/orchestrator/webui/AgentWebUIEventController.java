@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.Agent;
-import org.ideaccum.ai.orchestrator.agent.AgentResult;
 import org.ideaccum.ai.orchestrator.context.Conversation;
 import org.ideaccum.ai.orchestrator.context.Conversations;
 import org.ideaccum.ai.orchestrator.context.Session;
@@ -230,7 +229,7 @@ public class AgentWebUIEventController implements Constants {
 	}
 
 	/**
-	 * エージェント処理完了イベントを発行します(エージェント名文字列版)。<br>
+	 * エージェント処理完了イベントを発行します。<br>
 	 * @param agentName エージェント名
 	 */
 	public void publishFinish(String agentName) {
@@ -241,22 +240,10 @@ public class AgentWebUIEventController implements Constants {
 	/**
 	 * エージェント処理完了イベントを発行します。<br>
 	 * @param agent エージェントオブジェクト
-	 * @param result エージェント処理結果オブジェクト
-	 */
-	public void publishFinish(Agent agent, AgentResult result) {
-		log.info("エージェント処理完了イベントを通知します(" + agent.getName() + ")。");
-		long tokenUsage = result != null && result.getUsage() != null ? result.getUsage().getTotalTokens() : 0L;
-		long elapsedTime = result != null ? result.getElapsedTime() : 0L;
-		publish(AgentWebUIEvent.createAgentFinish(agent.getName(), agent.getSessionId(), tokenUsage, elapsedTime));
-	}
-
-	/**
-	 * エージェント処理完了イベントを発行します(累計トークン指定版)。<br>
-	 * @param agent エージェントオブジェクト
 	 * @param cumulativeTokens 累計トークン使用量
 	 * @param elapsedTime 処理時間
 	 */
-	public void publishFinishCumulative(Agent agent, long cumulativeTokens, long elapsedTime) {
+	public void publishFinish(Agent agent, long cumulativeTokens, long elapsedTime) {
 		log.info("エージェント処理完了イベントを通知します(" + agent.getName() + ")。");
 		publish(AgentWebUIEvent.createAgentFinish(agent.getName(), agent.getSessionId(), cumulativeTokens, elapsedTime));
 	}

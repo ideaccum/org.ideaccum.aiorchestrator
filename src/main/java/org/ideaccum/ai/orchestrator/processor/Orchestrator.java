@@ -79,8 +79,21 @@ public class Orchestrator implements Constants {
 
 			/*
 			 * ディスパッチエージェント取得
+			 * 前回セッションが完了済み(合意キーワードあり)の場合はリーダーから再開
 			 */
-			List<Agent> dispatchAgents = context.getConversations().getLastDispatchAgents();
+			String prevConsensusKeyword = context.getConfig().getAgentFinalizeKeyword();
+			boolean previouslyCompleted = context.getConversations().getAll().stream().anyMatch(c -> {
+				if (c.getContent() == null) {
+					return false;
+				}
+				for (String line : c.getContent().split("[\\r\\n]+")) {
+					if (line.trim().equals(prevConsensusKeyword)) {
+						return true;
+					}
+				}
+				return false;
+			});
+			List<Agent> dispatchAgents = previouslyCompleted ? new LinkedList<>() : context.getConversations().getLastDispatchAgents();
 
 			/*
 			 * ディスパッチエージェントが存在しない場合はリーダーエージェントを設定
@@ -125,7 +138,7 @@ public class Orchestrator implements Constants {
 							cumulativeTokens += conversation.getTokenUsage().getTotalTokens();
 						}
 					}
-					AgentWebUIEventController.instance().publishFinishCumulative(agent, cumulativeTokens, result.getElapsedTime());
+					AgentWebUIEventController.instance().publishFinish(agent, cumulativeTokens, result.getElapsedTime());
 
 					// エージェント会話合意状態取得(CR/LF/CRLF の違いに対応してtrimで比較)
 					String consensusKeyword = context.getConfig().getAgentFinalizeKeyword();
@@ -136,8 +149,13 @@ public class Orchestrator implements Constants {
 					}
 
 					// 合意済みの場合はディスパッチキーワードを無視して次エージェント呼び出しを抑止
+					// 同一エージェントへの重複ディスパッチは除外する
 					if (!consensus) {
-						nextDispatchAgents.addAll(extractDispatchAgents(result.getResponse()));
+						for (Agent dispatchAgent : extractDispatchAgents(result.getResponse())) {
+							if (nextDispatchAgents.stream().noneMatch(a -> a.getName().equals(dispatchAgent.getName()))) {
+								nextDispatchAgents.add(dispatchAgent);
+							}
+						}
 					}
 				}
 				dispatchAgents = nextDispatchAgents;
@@ -169,7 +187,7 @@ public class Orchestrator implements Constants {
 		Pattern pattern = context.getConfig().getAgentDispatchKeywordPattern();
 		Matcher matcher = pattern.matcher(response);
 		while (matcher.find()) {
-			String agentName = matcher.group(1);
+			String agentName = matcher.group(1).trim();
 			agents.add(context.getAgent(agentName));
 		}
 		return agents;

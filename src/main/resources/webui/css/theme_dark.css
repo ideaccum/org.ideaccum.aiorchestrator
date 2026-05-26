@@ -26,6 +26,9 @@
 
 	/* ---- ページヘッダー ---- */
 	--theme-header-bg: #1f1f1f; /* ページヘッダー背景色 */
+	--theme-header-nav-text: rgba(255, 255, 255, 0.75); /* ヘッダーナビゲーション文字色 */
+	--theme-header-nav-text-active: rgba(255, 255, 255, 0.9); /* ヘッダーナビゲーション文字色(アクティブ) */
+	--theme-header-nav-bg-hover: rgba(255, 255, 255, 0.1); /* ヘッダーナビゲーション背景色(ホバー) */
 
 	/* ---- ノーティスバー ---- */
 	--theme-notice-bar-bg: #252526; /* ノーティスバー背景色 */

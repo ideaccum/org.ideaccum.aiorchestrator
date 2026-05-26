@@ -291,7 +291,7 @@ body.disconnected .disconnected-panel {
 	align-items: center;
 	padding: 0.2rem var(--sp-tab-item-h);
 	font-size: var(--fs-small);
-	color: rgba(255, 255, 255, 0.75);
+	color: var(--color-header-nav-text);
 	text-decoration: none;
 	white-space: nowrap;
 	border-radius: var(--radius-sm);
@@ -299,13 +299,13 @@ body.disconnected .disconnected-panel {
 }
 /* ---- ホバー ---- */
 .header-nav-item:hover {
-	color: rgba(255, 255, 255, 0.9);
-	background: rgba(255, 255, 255, 0.1);
+	color: var(--color-header-nav-text-active);
+	background: var(--color-header-nav-bg-hover);
 }
 /* ---- アクティブページ ---- */
 .header-nav-item.header-nav-active {
-	color: rgba(255, 255, 255, 0.9);
-	background: rgba(255, 255, 255, 0.1);
+	color: var(--color-header-nav-text-active);
+	background: var(--color-header-nav-bg-hover);
 }
 /* ---- ヘッダー内プロジェクト名 ---- */
 .header-project-name {
@@ -552,6 +552,15 @@ body:not(.has-project) .header-nav-requires-project {
 .list-item.selected {
 	background: var(--color-split-selected-bg);
 	border-color: var(--color-split-selected-border);
+	color: var(--color-split-selected-text);
+}
+/* ---- 選択アイテム内子要素の文字色上書き ---- */
+.list-item.selected .list-item-ali-label,
+.list-item.selected .list-item-ali-caption,
+.list-item.selected .list-item-ali-meta,
+.list-item.selected .list-item-icon,
+.list-item.selected .list-item-copy-btn,
+.list-item.selected .list-item-delete-btn {
 	color: var(--color-split-selected-text);
 }
 /* ---- アイテムアイコン ---- */

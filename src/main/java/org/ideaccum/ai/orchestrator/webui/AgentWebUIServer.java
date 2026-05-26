@@ -367,7 +367,10 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * プロジェクト未選択時のプロジェクトページリダイレクト
 		 */
-		if (!isProjectSelected() && !requestPath.endsWith(WEBUI_PROJECT_SETTING_PAGE) && requestPath.endsWith(".html")) {
+		if (!isProjectSelected() && requestPath.endsWith(".html") //
+				&& !requestPath.endsWith(WEBUI_PROJECT_SETTING_PAGE) //
+				&& !requestPath.endsWith(WEBUI_CONFIG_SETTING_PAGE) //
+		) {
 			exchange.getResponseHeaders().set("Connection", "close");
 			exchange.getResponseHeaders().set("Location", WEBUI_PROJECT_SETTING_PAGE);
 			exchange.sendResponseHeaders(302, -1);

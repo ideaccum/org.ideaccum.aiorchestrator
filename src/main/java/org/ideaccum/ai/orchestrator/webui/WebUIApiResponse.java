@@ -13,7 +13,7 @@ package org.ideaccum.ai.orchestrator.webui;
  * 2026/05/10	Kitagawa		新規作成
  *-->
  */
-public class AgentWebUIApiResponse {
+public class WebUIApiResponse {
 
 	/** 処理成否 */
 	private final boolean success;
@@ -33,7 +33,7 @@ public class AgentWebUIApiResponse {
 	/**
 	 * コンストラクタ<br>
 	 */
-	private AgentWebUIApiResponse(boolean success, Object data, String error, String message, String warning) {
+	private WebUIApiResponse(boolean success, Object data, String error, String message, String warning) {
 		this.success = success;
 		this.data = data;
 		this.error = error;
@@ -45,8 +45,8 @@ public class AgentWebUIApiResponse {
 	 * 成功レスポンスを生成します。<br>
 	 * @return 成功レスポンスオブジェクト
 	 */
-	public static AgentWebUIApiResponse ok() {
-		return new AgentWebUIApiResponse(true, null, null, null, null);
+	public static WebUIApiResponse ok() {
+		return new WebUIApiResponse(true, null, null, null, null);
 	}
 
 	/**
@@ -54,8 +54,8 @@ public class AgentWebUIApiResponse {
 	 * @param data レスポンスデータ
 	 * @return 成功レスポンスオブジェクト
 	 */
-	public static AgentWebUIApiResponse ok(Object data) {
-		return new AgentWebUIApiResponse(true, data, null, null, null);
+	public static WebUIApiResponse ok(Object data) {
+		return new WebUIApiResponse(true, data, null, null, null);
 	}
 
 	/**
@@ -64,8 +64,8 @@ public class AgentWebUIApiResponse {
 	 * @param message 情報メッセージ
 	 * @return 成功レスポンスオブジェクト
 	 */
-	public static AgentWebUIApiResponse ok(Object data, String message) {
-		return new AgentWebUIApiResponse(true, data, null, message, null);
+	public static WebUIApiResponse ok(Object data, String message) {
+		return new WebUIApiResponse(true, data, null, message, null);
 	}
 
 	/**
@@ -74,8 +74,8 @@ public class AgentWebUIApiResponse {
 	 * @param warning 警告メッセージ
 	 * @return 成功レスポンスオブジェクト
 	 */
-	public static AgentWebUIApiResponse warn(Object data, String warning) {
-		return new AgentWebUIApiResponse(true, data, null, null, warning);
+	public static WebUIApiResponse warn(Object data, String warning) {
+		return new WebUIApiResponse(true, data, null, null, warning);
 	}
 
 	/**
@@ -83,8 +83,8 @@ public class AgentWebUIApiResponse {
 	 * @param message エラーメッセージ
 	 * @return エラーレスポンスオブジェクト
 	 */
-	public static AgentWebUIApiResponse error(String message) {
-		return new AgentWebUIApiResponse(false, null, message, null, null);
+	public static WebUIApiResponse error(String message) {
+		return new WebUIApiResponse(false, null, message, null, null);
 	}
 
 	/**

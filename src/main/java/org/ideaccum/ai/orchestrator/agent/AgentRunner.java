@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.context.Context;
-import org.ideaccum.ai.orchestrator.webui.AgentWebUIEventController;
+import org.ideaccum.ai.orchestrator.webui.WebUIController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +57,20 @@ public class AgentRunner implements Constants {
 	 */
 	public Context getContext() {
 		return context;
+	}
+
+	/**
+	 * 実行中の全エージェントプロセスを強制終了します。<br>
+	 */
+	public void stopAll() {
+		log.debug("全エージェントプロセスの強制停止を実行します。");
+		tasks.keySet().forEach(agent -> {
+			try {
+				agent.stop();
+			} catch (Throwable e) {
+				log.error("エージェントの強制停止でエラーが発生しました(" + agent.getName() + ")。", e);
+			}
+		});
 	}
 
 	/**
@@ -116,7 +130,7 @@ public class AgentRunner implements Constants {
 			log.error("エージェント処理に失敗しました。", e);
 			AgentResult result = AgentResult.error(agent.getName(), e.getMessage(), e);
 			future.complete(result);
-			AgentWebUIEventController.instance().publishError(agent.getName(), e.getMessage());
+			WebUIController.instance().publishError(agent.getName(), e.getMessage());
 		}
 	}
 
@@ -133,8 +147,8 @@ public class AgentRunner implements Constants {
 		String role = agent.getRole();
 		String sessionId = agent.getSessionId() == null ? "<None>" : agent.getSessionId();
 		String threadName = Thread.currentThread().getName();
-		log.info("エージェント処理セッションを開始します(%s(%s)) / %s / Session=%s [%s]".formatted(name, role, type, sessionId, threadName));
-		AgentWebUIEventController.instance().publishStart(agent);
+		log.debug("エージェント処理セッションを開始します(%s(%s)) / %s / Session=%s [%s]".formatted(name, role, type, sessionId, threadName));
+		WebUIController.instance().publishStart(agent);
 	}
 
 	/**
@@ -153,9 +167,9 @@ public class AgentRunner implements Constants {
 		String threadName = Thread.currentThread().getName();
 		String tokenUsage = result == null || result.getUsage() == null ? "<Unkown>" : new DecimalFormat("#,##0").format(result.getUsage().getTotalTokens());
 		String elapsedTime = result == null || result.getUsage() == null ? "<Unkown>" : new DecimalFormat("#,##0").format(result.getElapsedTime());
-		log.info("エージェント処理セッションを終了します(%s(%s)) / %s / Session=%s [%s]".formatted(name, role, type, sessionId, threadName));
-		log.info("エージェント処理で使用したトークンは、" + tokenUsage + "でした。");
-		log.info("エージェント処理の所要時間は、" + elapsedTime + "msでした。");
+		log.debug("エージェント処理セッションを終了します(%s(%s)) / %s / Session=%s [%s]".formatted(name, role, type, sessionId, threadName));
+		log.debug("エージェント処理で使用したトークンは、" + tokenUsage + "でした。");
+		log.debug("エージェント処理の所要時間は、" + elapsedTime + "msでした。");
 		// Orchestratorが会話ログ保存後に累計トークンで呼ぶため、ここでは呼ばない
 		//AgentWebUIEventController.instance().publishFinish(agent, result);
 	}

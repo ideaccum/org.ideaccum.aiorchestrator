@@ -16,6 +16,7 @@ import org.ideaccum.ai.orchestrator.context.Conversation;
 import org.ideaccum.ai.orchestrator.context.Conversations;
 import org.ideaccum.ai.orchestrator.context.Session;
 import org.ideaccum.ai.orchestrator.context.Sessions;
+import org.ideaccum.ai.orchestrator.context.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,13 +34,13 @@ import org.slf4j.LoggerFactory;
  * 2026/04/30	Kitagawa		新規作成
  *-->
  */
-public class AgentWebUIEventController implements Constants {
+public class WebUIController implements Constants {
 
 	/** ロガーオブジェクト */
-	private static final Logger log = LoggerFactory.getLogger(AgentWebUIServer.class);
+	private static final Logger log = LoggerFactory.getLogger(WebUIServer.class);
 
 	/** シングルトンインスタンス */
-	private static final AgentWebUIEventController INSTANCE = new AgentWebUIEventController();
+	private static final WebUIController INSTANCE = new WebUIController();
 
 	/** SSEサブスクライバーリスト */
 	private final List<Consumer<String>> subscribers;
@@ -50,7 +51,7 @@ public class AgentWebUIEventController implements Constants {
 	/**
 	 * コンストラクタ<br>
 	 */
-	private AgentWebUIEventController() {
+	private WebUIController() {
 		this.subscribers = new CopyOnWriteArrayList<>();
 		this.eventBuffer = new LinkedList<>();
 	}
@@ -59,7 +60,7 @@ public class AgentWebUIEventController implements Constants {
 	 * シングルトンインスタンスを提供します。<br>
 	 * @return シングルトンインスタンス
 	 */
-	public static AgentWebUIEventController instance() {
+	public static WebUIController instance() {
 		return INSTANCE;
 	}
 
@@ -85,25 +86,29 @@ public class AgentWebUIEventController implements Constants {
 	 * @param sessions 復元済みセッション情報
 	 */
 	public void preloadBuffer(List<Agent> agents, Conversations conversations, Sessions sessions) {
-		log.info("開始前コントローラー表示用バッファ事前投入を実行します。");
+		log.debug("開始前コントローラー表示用バッファ事前投入を実行します。");
 		List<String> newBuffer = new LinkedList<>();
 		try {
-			newBuffer.add("data: " + MAPPER.writeValueAsString(AgentWebUIEvent.createAgentInitialized(sortAgents(agents))) + "\n\n");
+			newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentInitialized(sortAgents(agents))) + "\n\n");
 			if (conversations != null && !conversations.isEmpty()) {
-				Map<String, Long> cumulativeMap = new LinkedHashMap<>();
+				Map<String, TokenUsage> tokenUsageMap = new LinkedHashMap<>();
+				String prevTimestamp = null;
 				for (Conversation conv : conversations.getAll()) {
 					String agentName = conv.getAgentName();
 					Session session = sessions != null ? sessions.get(agentName) : null;
 					String sessionId = session != null ? session.getSessionId() : null;
-					long perTurn = conv.getTokenUsage() != null ? conv.getTokenUsage().getTotalTokens() : 0L;
-					cumulativeMap.merge(agentName, perTurn, Long::sum);
-					long cumulative = cumulativeMap.getOrDefault(agentName, 0L);
-					newBuffer.add("data: " + MAPPER.writeValueAsString(AgentWebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp())) + "\n\n");
-					newBuffer.add("data: " + MAPPER.writeValueAsString(AgentWebUIEvent.createAgentContent(agentName, conv.getContent())) + "\n\n");
-					newBuffer.add("data: " + MAPPER.writeValueAsString(AgentWebUIEvent.createAgentFinish(agentName, sessionId, cumulative, 0L)) + "\n\n");
+					TokenUsage tokenUsage = tokenUsageMap.computeIfAbsent(agentName, k -> new TokenUsage());
+					if (conv.getTokenUsage() != null) {
+						tokenUsage.add(conv.getTokenUsage());
+					}
+					long elapsedMs = calcElapsedMs(prevTimestamp, conv.getTimestamp());
+					prevTimestamp = conv.getTimestamp();
+					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp())) + "\n\n");
+					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentContent(agentName, conv.getContent())) + "\n\n");
+					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, elapsedMs)) + "\n\n");
 				}
 				// 過去ログ表示はオーケストレーター処理完了状態送信でアイドル状態に設定
-				newBuffer.add("data: " + MAPPER.writeValueAsString(AgentWebUIEvent.createOrchestratorDone()) + "\n\n");
+				newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createOrchestratorDone()) + "\n\n");
 			}
 		} catch (Throwable e) {
 			log.error("バッファ事前投入でエラーが発生しました。", e);
@@ -151,7 +156,7 @@ public class AgentWebUIEventController implements Constants {
 	 * イベントをブラウザに対して発行します。<br>
 	 * @param event イベントオブジェクト
 	 */
-	private void publish(AgentWebUIEvent event) {
+	private void publish(WebUIEvent event) {
 		try {
 			String json = MAPPER.writeValueAsString(event);
 			String data = "data: " + json + "\n\n";
@@ -184,7 +189,7 @@ public class AgentWebUIEventController implements Constants {
 	 * @param agents エージェントリスト
 	 */
 	public void publishInit(List<Agent> agents) {
-		publish(AgentWebUIEvent.createAgentInitialized(sortAgents(agents)));
+		publish(WebUIEvent.createAgentInitialized(sortAgents(agents)));
 	}
 
 	/**
@@ -192,9 +197,9 @@ public class AgentWebUIEventController implements Constants {
 	 * @param agent エージェントオブジェクト
 	 */
 	public void publishStart(Agent agent) {
-		log.info("エージェント処理開始イベントを通知します(" + agent.getName() + ")。");
-		String timestamp = DEFAULT_DATE_FORMAT.format(new Date());
-		publish(AgentWebUIEvent.createAgentStart(agent.getName(), agent.getSessionId(), timestamp));
+		log.debug("エージェント処理開始イベントを通知します(" + agent.getName() + ")。");
+		String timestamp = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date());
+		publish(WebUIEvent.createAgentStart(agent.getName(), agent.getSessionId(), timestamp));
 	}
 
 	/**
@@ -204,8 +209,8 @@ public class AgentWebUIEventController implements Constants {
 	 * @param timestamp タイムスタンプ
 	 */
 	public void publishStart(String agentName, String sessionId, String timestamp) {
-		log.info("エージェント処理開始イベントを通知します(" + agentName + ")。");
-		publish(AgentWebUIEvent.createAgentStart(agentName, sessionId, timestamp));
+		log.debug("エージェント処理開始イベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentStart(agentName, sessionId, timestamp));
 	}
 
 	/**
@@ -214,8 +219,8 @@ public class AgentWebUIEventController implements Constants {
 	 * @param content コンテンツ
 	 */
 	public void publishContent(String agentName, String content) {
-		log.info("エージェントコンテンツ処理イベントを通知します(" + agentName + ")。");
-		publish(AgentWebUIEvent.createAgentContent(agentName, content));
+		log.debug("エージェントコンテンツ処理イベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentContent(agentName, content));
 	}
 
 	/**
@@ -224,8 +229,8 @@ public class AgentWebUIEventController implements Constants {
 	 * @param message メッセージ
 	 */
 	public void publishMessage(String agentName, String message) {
-		log.info("エージェント一般メッセージイベントを通知します(" + agentName + ")。");
-		publish(AgentWebUIEvent.createAgentMessage(agentName, message));
+		log.debug("エージェント一般メッセージイベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentMessage(agentName, message));
 	}
 
 	/**
@@ -233,19 +238,29 @@ public class AgentWebUIEventController implements Constants {
 	 * @param agentName エージェント名
 	 */
 	public void publishFinish(String agentName) {
-		log.info("エージェント処理完了イベントを通知します(" + agentName + ")。");
-		publish(AgentWebUIEvent.createAgentFinish(agentName, null, 0L, 0L));
+		log.debug("エージェント処理完了イベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentFinish(agentName, null, 0L, 0L));
 	}
 
 	/**
 	 * エージェント処理完了イベントを発行します。<br>
 	 * @param agent エージェントオブジェクト
-	 * @param cumulativeTokens 累計トークン使用量
+	 * @param tokenUsage 累計トークン使用量
 	 * @param elapsedTime 処理時間
 	 */
-	public void publishFinish(Agent agent, long cumulativeTokens, long elapsedTime) {
-		log.info("エージェント処理完了イベントを通知します(" + agent.getName() + ")。");
-		publish(AgentWebUIEvent.createAgentFinish(agent.getName(), agent.getSessionId(), cumulativeTokens, elapsedTime));
+	public void publishFinish(Agent agent, TokenUsage tokenUsage, long elapsedTime) {
+		log.debug("エージェント処理完了イベントを通知します(" + agent.getName() + ")。");
+		publish(WebUIEvent.createAgentFinish(agent.getName(), agent.getSessionId(), tokenUsage, elapsedTime));
+	}
+
+	/**
+	 * エージェントセッションID更新イベントを発行します。<br>
+	 * @param agentName エージェント名
+	 * @param sessionId セッションID
+	 */
+	public void publishSessionUpdated(String agentName, String sessionId) {
+		log.debug("エージェントセッションID更新イベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentSessionUpdated(agentName, sessionId));
 	}
 
 	/**
@@ -254,8 +269,8 @@ public class AgentWebUIEventController implements Constants {
 	 * @param message エラーメッセージ
 	 */
 	public void publishError(String agentName, String message) {
-		log.info("エージェント処理エラーイベントを通知します(" + agentName + ")。");
-		publish(AgentWebUIEvent.createAgentError(agentName, message));
+		log.debug("エージェント処理エラーイベントを通知します(" + agentName + ")。");
+		publish(WebUIEvent.createAgentError(agentName, message));
 	}
 
 	/**
@@ -264,21 +279,25 @@ public class AgentWebUIEventController implements Constants {
 	 * @param sessions 復元済みセッション情報
 	 */
 	public void publishRestore(Conversations conversations, Sessions sessions) {
-		log.info("エージェント過去ログ復元処理を実行します。");
+		log.debug("エージェント過去ログ復元処理を実行します。");
 		if (conversations.isEmpty()) {
 			return;
 		}
-		java.util.Map<String, Long> cumulativeMap = new java.util.LinkedHashMap<>();
+		Map<String, TokenUsage> tokenUsageMap = new LinkedHashMap<>();
+		String prevTimestamp = null;
 		for (Conversation conv : conversations.getAll()) {
 			String agentName = conv.getAgentName();
 			Session session = sessions.get(agentName);
 			String sessionId = session != null ? session.getSessionId() : null;
-			long perTurn = conv.getTokenUsage() != null ? conv.getTokenUsage().getTotalTokens() : 0L;
-			cumulativeMap.merge(agentName, perTurn, Long::sum);
-			long cumulative = cumulativeMap.getOrDefault(agentName, 0L);
-			publish(AgentWebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp()));
-			publish(AgentWebUIEvent.createAgentContent(agentName, conv.getContent()));
-			publish(AgentWebUIEvent.createAgentFinish(agentName, sessionId, cumulative, 0L));
+			TokenUsage tokenUsage = tokenUsageMap.computeIfAbsent(agentName, k -> new TokenUsage());
+			if (conv.getTokenUsage() != null) {
+				tokenUsage.add(conv.getTokenUsage());
+			}
+			long elapsedMs = calcElapsedMs(prevTimestamp, conv.getTimestamp());
+			prevTimestamp = conv.getTimestamp();
+			publish(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp()));
+			publish(WebUIEvent.createAgentContent(agentName, conv.getContent()));
+			publish(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, elapsedMs));
 		}
 	}
 
@@ -286,24 +305,44 @@ public class AgentWebUIEventController implements Constants {
 	 * オーケストレーター完了イベントを発行します。<br>
 	 */
 	public void publishDone() {
-		log.info("エージェント処理完了イベントを通知します。");
-		publish(AgentWebUIEvent.createOrchestratorDone());
+		log.debug("エージェント処理完了イベントを通知します。");
+		publish(WebUIEvent.createOrchestratorDone());
 	}
 
 	/**
 	 * オーケストレーター開始イベントを発行します。<br>
 	 */
 	public void publishOrchestratorStarted() {
-		log.info("オーケストレーター開始イベントを通知します。");
-		publish(AgentWebUIEvent.createOrchestratorStarted());
+		log.debug("オーケストレーター開始イベントを通知します。");
+		publish(WebUIEvent.createOrchestratorStarted());
 	}
 
 	/**
 	 * オーケストレーター停止イベントを発行します。<br>
 	 */
 	public void publishOrchestratorStopped() {
-		log.info("オーケストレーター停止イベントを通知します。");
-		publish(AgentWebUIEvent.createOrchestratorStopped());
+		log.debug("オーケストレーター停止イベントを通知します。");
+		publish(WebUIEvent.createOrchestratorStopped());
+	}
+
+	/**
+	 * 2つのタイムスタンプ文字列からミリ秒単位の経過時間を計算します。<br>
+	 * パース失敗・前後逆転の場合は 0 を返します。
+	 * @param prevTimestamp 直前のタイムスタンプ
+	 * @param currentTimestamp 現在のタイムスタンプ
+	 * @return 経過時間(ms)
+	 */
+	private static long calcElapsedMs(String prevTimestamp, String currentTimestamp) {
+		if (prevTimestamp == null || currentTimestamp == null) {
+			return 0L;
+		}
+		try {
+			long prev = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(prevTimestamp).getTime();
+			long current = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(currentTimestamp).getTime();
+			return Math.max(0L, current - prev);
+		} catch (Exception e) {
+			return 0L;
+		}
 	}
 
 	/**

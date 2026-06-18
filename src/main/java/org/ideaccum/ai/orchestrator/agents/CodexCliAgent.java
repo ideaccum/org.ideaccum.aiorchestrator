@@ -9,6 +9,7 @@ import java.util.Map;
 import org.ideaccum.ai.orchestrator.agent.AgentConfig;
 import org.ideaccum.ai.orchestrator.context.Context;
 import org.ideaccum.ai.orchestrator.context.TokenUsage;
+import org.ideaccum.ai.orchestrator.util.StringUtils;
 
 import tools.jackson.databind.JsonNode;
 
@@ -95,7 +96,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 	 */
 	@Override
 	protected void prepare() throws Throwable {
-		Files.createDirectories(getContext().getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".codex"));
+		Files.createDirectories(getContext().getAgentRootPath().resolve(AGENT_CONFIG_DIR_CODEX));
 	}
 
 	/**
@@ -111,13 +112,18 @@ public class CodexCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			if (response.indexOf("HTTP error: 401 Unauthorized") >= 0) {
 				result = "認証が行われていません。";
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupErrorで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -134,6 +140,10 @@ public class CodexCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (!StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			JsonNode node = MAPPER.readTree(response);
 			String type = node.path("type").asString();
 
@@ -153,6 +163,22 @@ public class CodexCliAgent extends AbstractCliAgent {
 				} else if ("file_change".equals(itemType)) {
 					String query = item.path("query").asString();
 					result = "ファイル変更: " + query;
+				} else if ("todo_list".equals(itemType)) {
+					int total = item.path("items").size();
+					result = "タスクリスト開始: " + total + "件";
+				}
+			} else if ("item.updated".equals(type)) {
+				JsonNode item = node.path("item");
+				String itemType = item.path("type").asString();
+				if ("todo_list".equals(itemType)) {
+					JsonNode items = item.path("items");
+					long completed = 0;
+					for (JsonNode it : items) {
+						if (it.path("completed").asBoolean(false)) {
+							completed++;
+						}
+					}
+					result = "タスクリスト更新: " + completed + "/" + items.size() + "件完了。";
 				}
 			} else if ("item.completed".equals(type)) {
 				JsonNode item = node.path("item");
@@ -165,6 +191,8 @@ public class CodexCliAgent extends AbstractCliAgent {
 					result = "Web検索が完了しました。";
 				} else if ("file_change".equals(itemType)) {
 					result = "ファイルが変更されました。";
+				} else if ("todo_list".equals(itemType)) {
+					result = "タスクリストが完了しました。";
 				}
 			} else if ("turn.completed".equals(type)) {
 				result = "エージェント処理が完了しました。";
@@ -174,13 +202,14 @@ public class CodexCliAgent extends AbstractCliAgent {
 
 			// メッセージフック漏れ確認用エラーコンソール出力
 			if (result == null) {
-				System.err.println("[WARN] " + node.toString());
+				log.warn("[Internal] CodexCliAgentのlookupProgressでメッセージフック漏れがあります : " + node.toString());
 				result = node.toString();
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupProgressで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -204,6 +233,8 @@ public class CodexCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupSessionIdで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -236,6 +267,8 @@ public class CodexCliAgent extends AbstractCliAgent {
 				return null;
 			}
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupContentで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -273,6 +306,8 @@ public class CodexCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupUsageで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}

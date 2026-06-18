@@ -20,6 +20,7 @@
 		<link rel="stylesheet" href="css/theme.css" />
 		<link rel="stylesheet" href="css/common.css" />
 		<link rel="stylesheet" href="css/layout.css" />
+		<link rel="stylesheet" href="css/icons.css" />
 		<link rel="stylesheet" href="project_setting.css" />
 	</head>
 	<body>
@@ -34,7 +35,7 @@
 			<nav class="header-nav">
 				<a href="/webui/project_setting.html" class="header-nav-item header-nav-active">プロジェクト</a>
 				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
-				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/process_monitor.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
 				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
 				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
 			</nav>
@@ -43,7 +44,7 @@
 
 		<!-- ノーティスバー -->
 		<div id="page-notice" class="page-notice">
-			<div id="notice-spinner" class="loading-spinner"></div>
+			<div id="notice-spinner" class="loading-spinner loading-spinner-sm"></div>
 			<span id="notice-text"></span>
 		</div>
 
@@ -54,26 +55,27 @@
 		</div>
 
 		<!-- エラー表示パネル -->
-		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<div id="page-message-error" class="page-message-error hidden"></div>
 		<!-- 警告メッセージパネル -->
-		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<div id="page-message-warn" class="page-message-warn hidden"></div>
 		<!-- 情報メッセージパネル -->
-		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+		<div id="page-message-info" class="page-message-info hidden"></div>
 
+		<!-- ページヘッダー -->
+		<!--
+		<div class="content-header">
+			<span class="content-title"></span>
+		</div>
+		-->
 
 		<!-- メインコンテンツ(左右分割パネル) -->
 		<div class="split-layout">
-			<!-- 左パネル(プロジェクト一覧) -->
+			<!-- 左パネル -->
 			<div class="split-left">
 				<div class="split-left-header">
 					<span class="split-left-title">プロジェクト一覧</span>
 					<button id="btn-new" class="btn btn-icon btn-primary" title="追加">
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-							<polyline points="14 2 14 8 20 8"></polyline>
-							<line x1="12" y1="18" x2="12" y2="12"></line>
-							<line x1="9" y1="15" x2="15" y2="15"></line>
-						</svg>
+						<span class="icon icon-plus"></span>
 					</button>
 				</div>
 				<div id="project-list" class="split-left-body scrollbar-thin"></div>
@@ -87,7 +89,7 @@
 				</div>
 
 				<!-- 右ペインヘッダー -->
-				<div id="project-form-header" class="content-header" style="display: none">
+				<div id="project-form-header" class="content-header hidden">
 					<div class="btn-row">
 						<button id="btn-select-project" type="button" class="btn btn-run">選択</button>
 					</div>
@@ -97,19 +99,31 @@
 				</div>
 
 				<!-- 設定フォーム -->
-				<div id="project-detail-panel" class="form-panel scrollbar-thin" style="display: none">
-					<div id="page-message-error" class="page-message-error" style="display: none"></div>
+				<div id="project-detail-panel" class="form-panel scrollbar-thin hidden">
+					<div id="page-message-error" class="page-message-error hidden"></div>
 					<div class="form-section-label">プロジェクト情報</div>
 					<div class="form-row">
 						<label class="form-label" for="project-name-input">プロジェクト名</label>
-						<span id="project-detail-name" class="input-field-readonly" style="display: none"></span>
-						<input id="project-name-input" class="input-field" type="text" placeholder="プロジェクト名を入力..." style="display: none" maxlength="32" />
+						<span id="project-detail-name" class="input-field-readonly hidden"></span>
+						<input id="project-name-input" class="input-field" type="text" placeholder="プロジェクト名を入力..." maxlength="32" />
 					</div>
 					<div class="form-row">
 						<label class="form-label" for="project-title-input">タイトル</label>
 						<input id="project-title-input" class="input-field" type="text" placeholder="表示タイトルを入力..." maxlength="80" />
 					</div>
-					<div id="form-row-agent-template" class="form-row" style="display: none">
+					<div class="form-section-label">エージェント作業ルートパス</div>
+					<div class="form-row form-row-check">
+						<label class="form-check-label">
+							<input id="project-external-enabled" type="checkbox" />
+							<span>外部パスを使用する</span>
+						</label>
+					</div>
+					<div id="form-row-external-path" class="form-row hidden">
+						<label class="form-label" for="project-external-path-input">外部パス</label>
+						<input id="project-external-path-input" class="input-field" type="text" placeholder="例: C:\repos\my-project" />
+					</div>
+					<div id="form-row-agent-template-label" class="form-section-label project-template-section hidden">新規作成オプション</div>
+					<div id="form-row-agent-template" class="form-row project-template-section hidden">
 						<label class="form-label" for="project-agent-template-input">エージェントテンプレート</label>
 						<select id="project-agent-template-input" class="input-field form-select">
 							<option value="">(テンプレートなし)</option>
@@ -118,22 +132,29 @@
 							<option value="light_codex">単純タスク向け(Codex)</option>
 							<option value="light_gemini">単純タスク向け(Gemini)</option>
 							<option value="fullstack">精密タスク向け</option>
+							<option value="discussion">討論タスク向け</option>
+							<option value="programming">プログラミングタスク向け</option>
 						</select>
 					</div>
-					<div class="form-section-label">プロジェクト実行実績</div>
-					<div id="form-row-stat-duration" class="form-row" style="display: none">
+					<div id="form-label-project-ops" class="form-section-label project-edit-section hidden">プロジェクト操作</div>
+					<div id="form-row-clear-session" class="form-row project-edit-section hidden">
+						<button id="btn-clear-session" type="button" class="btn form-row-inline">セッションクリア</button>
+						<button id="btn-download-logs" type="button" class="btn form-row-inline">ログダウンロード</button>
+					</div>
+					<div id="form-label-project-stats" class="form-section-label project-edit-section hidden">プロジェクト実行実績</div>
+					<div id="form-row-stat-duration" class="form-row project-edit-section hidden">
 						<label class="form-label">ターン合計時間</label>
 						<span id="project-stat-duration" class="input-field-readonly"></span>
 					</div>
-					<div id="form-row-stat-turns" class="form-row" style="display: none">
+					<div id="form-row-stat-turns" class="form-row project-edit-section hidden">
 						<label class="form-label">会話ターン数</label>
 						<span id="project-stat-turns" class="input-field-readonly"></span>
 					</div>
-					<div id="form-row-stat-tokens" class="form-row" style="display: none">
+					<div id="form-row-stat-tokens" class="form-row project-edit-section hidden">
 						<label class="form-label">消費トークン数</label>
 						<span id="project-stat-tokens" class="input-field-readonly"></span>
 					</div>
-					<div id="form-section-agent-tokens" style="display: none">
+					<div id="form-section-agent-tokens" class="project-edit-section hidden">
 						<div class="form-section-label">エージェント消費トークン内訳</div>
 						<div id="project-stat-agent-tokens-rows"></div>
 					</div>
@@ -145,12 +166,21 @@
 		<script src="lib/marked/marked-12.0.2.min.js"></script>
 		<script src="js/constants.js"></script>
 		<script src="js/utils.js"></script>
+		<script src="js/webui.js"></script>
 		<script src="js/webapi.js"></script>
-		<script src="js/content.js"></script>
-		<script src="js/header.js"></script>
+		<script src="js/webctrl.js"></script>
+		<script src="js/page.js"></script>
 		<script src="project_setting.js"></script>
 		<script>
-			Promise.all([new ContentController().init(), new HeaderController().init(), new ProjectSettingController().init()]).finally(() => Utils.hideBootOverlay());
+			Utils.init().then(() => {
+				WebUI.init();
+				return Promise.all([
+					new PageController().init(), //
+					new ProjectSettingController().init(), //
+				]).finally(() => {
+					WebUI.hideOverlay();
+				});
+			});
 		</script>
 	</body>
 </html>

@@ -1,5 +1,6 @@
 package org.ideaccum.ai.orchestrator.context;
 
+import java.nio.file.Path;
 import java.util.Map;
 
 import org.ideaccum.ai.orchestrator.Constants;
@@ -65,6 +66,23 @@ public class Context implements Constants {
 	 */
 	public String getProjectName() {
 		return projectName;
+	}
+
+	/**
+	 * エージェント作業ルートパスを取得します。<br>
+	 * @return エージェント作業ルートパス
+	 */
+	public Path getAgentRootPath() {
+		Path defaultPath = config.getApplicationProjectPath(projectName);
+		ProjectConfig projectConfig = new ProjectConfig(config.getApplicationProjectPropertiesPath(projectName));
+		// プロジェクト設定で外部パスが有効な場合は外部パス、以外の場合はプロジェクトパス
+		if (projectConfig.isExternalEnabled()) {
+			String externalPath = projectConfig.getExternalPath();
+			if (externalPath != null && !externalPath.isBlank()) {
+				return Path.of(externalPath);
+			}
+		}
+		return defaultPath;
 	}
 
 	/**

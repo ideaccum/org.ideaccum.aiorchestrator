@@ -12,8 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
-
 /**
  * プロジェクト設定情報管理クラスです。<br>
  * <p>
@@ -54,7 +52,7 @@ public class ProjectConfig {
 		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
 			properties.load(reader);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("プロジェクト設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
+			throw new InternalError(String.format("プロジェクト設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
 		}
 		return properties;
 	}
@@ -106,5 +104,43 @@ public class ProjectConfig {
 	public void setTitle(String title) {
 		String key = "project.title";
 		properties.setProperty(key, title);
+	}
+
+	/**
+	 * 外部パス使用フラグを取得します。<br>
+	 * @return 外部パスを使用する場合にtrue
+	 */
+	public boolean isExternalEnabled() {
+		String key = "project.external.enabled";
+		String raw = properties.getProperty(key, "false");
+		return Boolean.parseBoolean(raw);
+	}
+
+	/**
+	 * 外部パス使用フラグを設定します。<br>
+	 * @param enabled 外部パスを使用する場合にtrue
+	 */
+	public void setExternalEnabled(boolean enabled) {
+		String key = "project.external.enabled";
+		properties.setProperty(key, String.valueOf(enabled));
+	}
+
+	/**
+	 * エージェント作業ルートの外部パスを取得します。<br>
+	 * @return 外部パス文字列(未設定の場合はnull)
+	 */
+	public String getExternalPath() {
+		String key = "project.external.path";
+		String raw = properties.getProperty(key, "");
+		return raw.isBlank() ? null : raw;
+	}
+
+	/**
+	 * エージェント作業ルートの外部パスを設定します。<br>
+	 * @param path 外部パス文字列
+	 */
+	public void setExternalPath(String path) {
+		String key = "project.external.path";
+		properties.setProperty(key, path == null ? "" : path);
 	}
 }

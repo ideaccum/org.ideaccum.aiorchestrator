@@ -7,7 +7,7 @@
  * @author Kitagawa<br>
  *
  *<!--
- * 更新日		更新者		更新内容
+ * 更新日		更新者			更新内容
  * 2026/05/08	Kitagawa		新規作成
  *-->
  */
@@ -22,34 +22,37 @@ class Constants {
 	static SSE_RECONNECT_INTERVAL = 3 * 1000; // 3秒
 
 	/** サーバー状態ポーリング間隔(ミリ秒) */
-	static POLLING_INTERVAL = 2 * 1000; // 2秒
+	static POLLING_INTERVAL = 500; // 0.5秒
 
 	/** サーバー状態ポーリング中断タイムアウト(ミリ秒) */
 	static POLLING_ABORT_TIMEOUT = 30 * 1000; // 30秒
 
 	/** WebAPI中断タイムアウト(ミリ秒) */
-	static WEBAPI_ABORT_TIMEOUT = 60 * 60 * 1000; // 1時間
+	static WEBAPI_ABORT_TIMEOUT = 120 * 60 * 1000; // 2時間
+
+	/** API処理中オーバーレイ表示ディレイ(ミリ秒) */
+	static PROCESSING_OVERLAY_DELAY = 500; // 0.5秒
 
 	/** アイコン: ヒント(電球) */
-	static ICON_HINT = `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7 1H9l-.7-1A7 7 0 0 1 12 2z"/></svg>`;
+	static ICON_HINT = '<span class="icon icon-hint"></span>';
 
 	/** アイコン: プロジェクト(レイヤー) */
-	static ICON_PROJECT = `<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`;
+	static ICON_PROJECT = '<span class="icon icon-project"></span>';
 
 	/** アイコン: エージェント(CPUチップ) */
-	static ICON_AGENT = `<svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>`;
+	static ICON_AGENT = '<span class="icon icon-agent"></span>';
 
 	/** アイコン: 更新(リフレッシュ) */
-	static ICON_REFRESH = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+	static ICON_REFRESH = '<span class="icon icon-refresh"></span>';
 
 	/** アイコン: 追加(新規ファイル) */
-	static ICON_PLUS = `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
+	static ICON_PLUS = '<span class="icon icon-plus"></span>';
 
 	/** アイコン: ゴミ箱 */
-	static ICON_TRASH = `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+	static ICON_TRASH = '<span class="icon icon-trash"></span>';
 
 	/** アイコン: 複写 */
-	static ICON_COPY = `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+	static ICON_COPY = '<span class="icon icon-copy"></span>';
 
 	/** オーナーエージェント名(予約名) */
 	static OWNER_AGENT_NAME = "Owner";
@@ -62,6 +65,9 @@ class Constants {
 
 	/** プリセットプロンプト:推奨される次の指示 */
 	static PROMPT_NEXT_ACTION = "現在の進捗状況を踏まえ、次に実施すべき推奨アクションを具体的に提案してください。\n- リーダーのエージェントがこのタスクを実行してください。";
+
+	/** プリセットプロンプト:自動運転議論 */
+	static PROMPT_NEXT_DISCUSSION_AUTO_PILOT = "AI搭載の自動運転について討論してください。\n自身の進行方向には子どもが飛び出してきています、それを避けようとすると対向車と正面衝突します。\n回避せずに子どもを犠牲にする行動、回避して自身と対向車の運転手が犠牲になる行動のパターンがありますが、どの行動が妥当ですか。\n尚、ブレーキをかけても間に合う状況にはなく、誰かが犠牲になります。";
 
 	/** SSE接続URL */
 	static SSE_CONNECT_URL = "/sse/connect";
@@ -89,6 +95,9 @@ class Constants {
 
 	/** SSEイベント(エージェントエラー) */
 	static SSE_TYPE_AGENT_ERROR = "agent_error";
+
+	/** SSEイベント(エージェントセッションID更新) */
+	static SSE_TYPE_AGENT_SESSION_UPDATED = "agent_session_updated";
 
 	/** SSEイベント(オーケストレーター完了) */
 	static SSE_TYPE_ORCHESTRATOR_DONE = "orchestrator_done";
@@ -146,4 +155,19 @@ class Constants {
 
 	/** API URL(会話ログ取得) */
 	static API_GET_CONVERSATION_LOG = "/api/get_conversation_log";
+
+	/** API URL(セッションクリア) */
+	static API_CLEAR_SESSION = "/api/clear_session";
+
+	/** API URL(制御キーワード取得) */
+	static API_GET_CONTROL_KEYWORDS = "/api/get_control_keywords";
+
+	/** API URL(ログダウンロード) */
+	static API_DOWNLOAD_LOGS = "/api/download_logs";
+
+	/** API URL(バックグラウンドタスクキャンセル) */
+	static API_CANCEL_PROCESS = "/api/cancel_process";
+
+	/** API URL(バックグラウンドタスクステータス取得) */
+	static API_GET_PROCESS_STATUS = "/api/get_process_status";
 }

@@ -12,135 +12,15 @@
  *-->
  */
 class Utils {
-	/**
-	 * スクリプトエラーをコンソールに出力して警告通知します<br>
-	 * @param {Error} error - エラーオブジェクト
-	 */
-	static catchFatal(error) {
-		alert("エラーが発生しました。\nブラウザコンソールログとサーバーログを確認してください。");
-		console.error(error);
-	}
+	/** 制御キーワード情報キャッシュ(null=未取得) */
+	static #controlKeywords = null;
 
 	/**
-	 * フォームエラーメッセージを表示します。<br>
-	 * @param {string} message - エラーメッセージ
+	 * アプリケーション共通の初期化処理を実行します。<br>
+	 * 各画面の Promise.all に並べて呼び出してください。<br>
 	 */
-	static showError(message) {
-		const elError = document.getElementById("page-message-error");
-		if (elError) {
-			elError.textContent = message || "";
-			elError.style.display = message ? "" : "none";
-		} else {
-			alert(message || "");
-		}
-	}
-
-	/**
-	 * フォームエラーメッセージをクリアします。<br>
-	 */
-	static clearError() {
-		Utils.showError("");
-	}
-
-	/**
-	 * フォーム警告メッセージを表示します。<br>
-	 * @param {string} message - 警告メッセージ
-	 */
-	static showWarning(message) {
-		const elWarning = document.getElementById("page-message-warn");
-		if (elWarning) {
-			elWarning.textContent = message || "";
-			elWarning.style.display = message ? "" : "none";
-		}
-	}
-
-	/**
-	 * フォーム警告メッセージをクリアします。<br>
-	 */
-	static clearWarning() {
-		Utils.showWarning("");
-	}
-
-	/**
-	 * フォーム情報メッセージを表示します。<br>
-	 * @param {string} message - 情報メッセージ
-	 */
-	static showInfo(message) {
-		const elInfo = document.getElementById("page-message-info");
-		if (elInfo) {
-			elInfo.textContent = message || "";
-			elInfo.style.display = message ? "" : "none";
-		}
-	}
-
-	/**
-	 * フォーム情報メッセージをクリアします。<br>
-	 */
-	static clearInfo() {
-		Utils.showInfo("");
-	}
-
-	/**
-	 * ブートオーバーレイを非表示にします。<br>
-	 * すべてのコントローラー初期化完了後に呼び出してください。<br>
-	 */
-	static hideBootOverlay() {
-		const elOverlay = document.getElementById("boot-overlay");
-		if (elOverlay) {
-			elOverlay.classList.add("hidden");
-		}
-	}
-
-	/**
-	 * カスタム確認ダイアログを表示し、ユーザーの選択結果をPromiseで返します。<br>
-	 * @param {string} message - 確認メッセージ
-	 * @param {string} [confirmLabel="OK"] - 実行ボタンのラベル
-	 * @param {string} [cancelLabel="キャンセル"] - キャンセルボタンのラベル
-	 * @returns {Promise<boolean>} 実行ボタンが押された場合true、キャンセルの場合false
-	 */
-	static confirm(message, confirmLabel = "OK", cancelLabel = "キャンセル") {
-		return new Promise((resolve) => {
-			const backdrop = document.createElement("div");
-			backdrop.className = "confirm-backdrop";
-			backdrop.innerHTML = `
-				<div class="confirm-dialog">
-					<div class="confirm-message">${Utils.esc(message)}</div>
-					<div class="confirm-actions btn-row">
-						<button class="btn confirm-ok-btn">${Utils.esc(confirmLabel)}</button>
-						<button class="btn confirm-cancel-btn">${Utils.esc(cancelLabel)}</button>
-					</div>
-				</div>
-			`;
-			document.body.appendChild(backdrop);
-
-			const cleanup = (result) => {
-				document.removeEventListener("keydown", onKeyDown);
-				backdrop.remove();
-				resolve(result);
-			};
-
-			const onKeyDown = (event) => {
-				if (event.key === "Escape") {
-					cleanup(false);
-				}
-				if (event.key === "Enter") {
-					cleanup(true);
-				}
-				if (event.key === " ") {
-					cleanup(true);
-				}
-			};
-
-			backdrop.querySelector(".confirm-ok-btn").addEventListener("click", () => cleanup(true));
-			backdrop.querySelector(".confirm-cancel-btn").addEventListener("click", () => cleanup(false));
-			backdrop.addEventListener("click", (event) => {
-				if (event.target === backdrop) {
-					cleanup(false);
-				}
-			});
-			document.addEventListener("keydown", onKeyDown);
-			backdrop.querySelector(".confirm-cancel-btn").focus();
-		});
+	static async init() {
+		await Utils.loadControlKeywords();
 	}
 
 	/**
@@ -192,23 +72,128 @@ class Utils {
 	}
 
 	/**
-	 * 秒数を "h時間m分s秒" 形式の文字列に変換します。
+	 * 秒数を "h時間m分s秒" 形式の文字列に変換します。<br>
+	 * 時がなければ "m分s秒"、時分がなければ "s秒" のみ表示します。
 	 * @param {number} sec - 秒数
 	 * @returns {string}
 	 */
 	static formatDurationSec(sec) {
 		if (!sec || sec <= 0) {
-			return "0分0秒";
+			return "0秒";
 		}
 		const h = Math.floor(sec / 3600);
 		const m = Math.floor((sec % 3600) / 60);
 		const s = sec % 60;
 		if (h > 0) {
-			return `${h}時間${m}分`;
+			return `${h}時間${m}分${s}秒`;
 		}
 		if (m > 0) {
 			return `${m}分${s}秒`;
 		}
 		return `${s}秒`;
+	}
+
+	/**
+	 * ミリ秒を "h時間m分s秒" 形式の文字列に変換します。<br>
+	 * @param {number} ms - ミリ秒
+	 * @returns {string}
+	 */
+	static formatDurationMs(ms) {
+		return Utils.formatDurationSec(Math.floor((ms || 0) / 1000));
+	}
+
+	/**
+	 * 制御キーワード情報をサーバーから取得してキャッシュします。<br>
+	 * 取得済みの場合はキャッシュをそのまま返します。<br>
+	 * @returns {Promise<object|null>} 制御キーワード情報
+	 */
+	static async loadControlKeywords() {
+		if (Utils.#controlKeywords !== null) {
+			return Utils.#controlKeywords;
+		}
+		const result = await WebAPI.getControlKeywords({}, false);
+		if (result?.data) {
+			const data = result.data;
+			Utils.#controlKeywords = {
+				finalizeKeyword: data.finalizeKeyword || "",
+				interruptKeyword: data.interruptKeyword || "",
+				dispatchRegexp: data.dispatchRegexp ? new RegExp(data.dispatchRegexp) : null,
+			};
+		}
+		return Utils.#controlKeywords;
+	}
+
+	/**
+	 * エージェント名・トークン情報からフッター表示用テキストを生成します。<br>
+	 * オーナーエージェントの場合は "User Prompt" を返します。<br>
+	 * @param {string} agentName - エージェント名
+	 * @param {number|null} inputTokens - 入力トークン数
+	 * @param {number|null} outputTokens - 出力トークン数
+	 * @returns {string} トークン表示テキスト
+	 */
+	static formatTokenText(agentName, inputTokens, outputTokens) {
+		if (agentName === Constants.OWNER_AGENT_NAME) {
+			return "User Prompt";
+		}
+		const inT = Number(inputTokens || 0);
+		const outT = Number(outputTokens || 0);
+		const total = inT + outT;
+		if (total <= 0) {
+			return "";
+		}
+		return total.toLocaleString() + "トークン (IN:" + inT.toLocaleString() + " / OUT:" + outT.toLocaleString() + ")";
+	}
+
+	/**
+	 * 2つの "yyyy/MM/dd HH:mm:ss" 形式タイムスタンプから所要時間文字列を計算します。<br>
+	 * @param {string|null} prevTimestamp - 前ターンのタイムスタンプ
+	 * @param {string|null} curTimestamp - 現ターンのタイムスタンプ
+	 * @returns {string|null} 所要時間文字列(計算不能時はnull)
+	 */
+	static calcElapsed(prevTimestamp, curTimestamp) {
+		if (!prevTimestamp || !curTimestamp) {
+			return null;
+		}
+		const parse = (ts) => {
+			const m = ts.match(/(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+			if (!m) {
+				return null;
+			}
+			return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]), parseInt(m[6]));
+		};
+		const prev = parse(prevTimestamp);
+		const cur = parse(curTimestamp);
+		if (!prev || !cur) {
+			return null;
+		}
+		const diffMs = cur - prev;
+		if (diffMs < 0) {
+			return null;
+		}
+		return Utils.formatDurationSec(Math.floor(diffMs / 1000));
+	}
+
+	/**
+	 * テキストから制御キーワード行（ディスパッチ・完了・中断）を除外します。<br>
+	 * 累積テキスト全体に対してフィルタするため、チャンク分割されたキーワードにも対応します。<br>
+	 * loadControlKeywords() 未実行時はフィルタせずそのまま返します。<br>
+	 * @param {string} raw - フィルタ対象テキスト
+	 * @returns {string} キーワード行を除いたテキスト
+	 */
+	static filterKeywordLines(raw) {
+		if (!raw || !Utils.#controlKeywords) {
+			return raw;
+		}
+		const { finalizeKeyword, interruptKeyword, dispatchRegexp } = Utils.#controlKeywords;
+		return raw
+			.split("\n")
+			.filter((line) => {
+				const trimmed = line.trim();
+				if (finalizeKeyword && trimmed === finalizeKeyword) return false;
+				if (interruptKeyword && trimmed === interruptKeyword) return false;
+				if (dispatchRegexp && dispatchRegexp.test(trimmed)) return false;
+				return true;
+			})
+			.join("\n");
 	}
 }

@@ -12,17 +12,17 @@
  *-->
  */
 class ProjectSettingController {
-	/** サーバー上のカレントプロジェクト名 */
+	/** カレントプロジェクト名 */
 	#currentProject;
 
 	/** プロジェクト一覧 */
 	#projects;
 
-	/** 編集中プロジェクト名(null=新規作成モード) */
-	#editingName;
+	/** 編集中プロジェクト情報(null=新規作成モード) */
+	#editProject;
 
-	/** 複写元プロジェクト名(null=複写でない) */
-	#copyFromProject;
+	/** 複写元プロジェクト情報(null=複写でない) */
+	#copyProject;
 
 	/**
 	 * コンストラクタ<br>
@@ -31,10 +31,10 @@ class ProjectSettingController {
 		try {
 			this.#currentProject = null;
 			this.#projects = [];
-			this.#editingName = null;
-			this.#copyFromProject = null;
+			this.#editProject = null;
+			this.#copyProject = null;
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -44,9 +44,13 @@ class ProjectSettingController {
 	async init() {
 		try {
 			/*
-			 * プロジェクト情報取得
+			 * カレントプロジェクトエージェント取得
 			 */
 			await this.#loadCurrentProject();
+
+			/*
+			 * プロジェクト一覧取得
+			 */
 			await this.#loadProjectList();
 
 			/*
@@ -55,98 +59,94 @@ class ProjectSettingController {
 			document.getElementById("btn-new").onclick = (event) => this.#onClickNew(event);
 			document.getElementById("btn-save-project").onclick = (event) => this.#onClickSave(event);
 			document.getElementById("btn-select-project").onclick = (event) => this.#onClickSelect(event);
+			document.getElementById("btn-clear-session").onclick = (event) => this.#onClickClearSession(event);
+			document.getElementById("btn-download-logs").onclick = (event) => this.#onClickDownloadLogs(event);
+			document.getElementById("project-external-enabled").onchange = (event) => this.#onChangeExternalEnabled(event);
 			document.getElementById("project-list").onclick = (event) => this.#onListPanelClick(event);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
 	 * プロジェクト設定フォームパネルを表示します。<br>
-	 * @param {string|null} name - プロジェクト名(null=新規作成モード)
+	 * @param {Object|null} project - プロジェクト情報(null=新規作成モード)
 	 */
-	#showForm(name) {
+	#showForm(project) {
 		try {
 			/*
 			 * 編集対象設定
 			 */
-			this.#editingName = name ?? null;
+			this.#editProject = project ?? null;
 
 			/*
 			 * パネル切り替え
 			 */
-			document.getElementById("project-detail-empty").style.display = "none";
-			document.getElementById("project-form-header").style.display = "";
-			document.getElementById("project-detail-panel").style.display = "";
+			document.getElementById("project-detail-empty").classList.add("hidden");
+			document.getElementById("project-form-header").classList.remove("hidden");
+			document.getElementById("project-detail-panel").classList.remove("hidden");
 
 			/*
 			 * フォーム要素設定
 			 */
-			if (this.#editingName) {
-				const project = this.#projects.find((project) => project.name === this.#editingName) ?? null;
-				document.getElementById("btn-select-project").style.display = this.#editingName === this.#currentProject ? "none" : "";
-				document.getElementById("form-row-agent-template").style.display = "none";
-				document.getElementById("project-title-input").value = project?.title || "";
-				document.getElementById("project-detail-name").style.display = "none";
-				document.getElementById("project-name-input").value = this.#editingName;
-				document.getElementById("project-name-input").style.display = "";
+			if (this.#editProject) {
+				/*
+				 * モード時エージェント情報設定
+				 */
+				const externalEnabled = this.#editProject.externalEnabled ?? false;
+				const turnCount = this.#editProject.turnCount ?? 0;
+				document.querySelectorAll(".project-edit-section").forEach((el) => el.classList.remove("hidden"));
+				document.querySelectorAll(".project-template-section").forEach((el) => el.classList.add("hidden"));
+				document.getElementById("btn-select-project").classList.toggle("hidden", this.#editProject.name === this.#currentProject);
+				document.getElementById("project-name-input").value = this.#editProject.name;
+				document.getElementById("project-title-input").value = this.#editProject.title || "";
 				document.getElementById("project-title-input").focus();
-
-				/*
-				 * 統計情報表示(常時表示・会話なし時はデフォルト値)
-				 */
-				document.getElementById("form-row-stat-tokens").style.display = "";
-				document.getElementById("form-row-stat-turns").style.display = "";
-				document.getElementById("form-row-stat-duration").style.display = "";
-				const turnCount = project?.turnCount ?? 0;
-				document.getElementById("project-stat-duration").textContent = Utils.formatDurationSec(project?.durationSec ?? 0);
+				document.getElementById("project-external-enabled").checked = externalEnabled;
+				document.getElementById("project-external-path-input").value = this.#editProject.externalPath || "";
+				document.getElementById("form-row-external-path").classList.toggle("hidden", !externalEnabled);
+				document.getElementById("project-stat-duration").textContent = Utils.formatDurationSec(this.#editProject.durationSec ?? 0);
 				document.getElementById("project-stat-turns").textContent = `${turnCount} ターン`;
-				document.getElementById("project-stat-tokens").textContent = (project?.totalTokens ?? 0).toLocaleString() + " トークン";
+				document.getElementById("project-stat-tokens").textContent = (this.#editProject.totalTokens ?? 0).toLocaleString() + " トークン";
 
 				/*
-				 * エージェント別トークン内訳
+				 * エージェント別トークン内訳要素構築
 				 */
-				const agentTokens = project?.agentTokens ?? [];
-				document.getElementById("form-section-agent-tokens").style.display = "";
+				const agentTokens = this.#editProject.agentTokens ?? [];
 				const agentRowsEl = document.getElementById("project-stat-agent-tokens-rows");
-				agentRowsEl.innerHTML = agentTokens.length > 0
-					? agentTokens.map((agent) => {
-						const parts = [agent.type, agent.model].filter(Boolean).join(" ");
-						const label = parts ? `${Utils.esc(agent.name)} （${Utils.esc(parts)}）` : Utils.esc(agent.name);
-						return `
+				agentRowsEl.innerHTML =
+					agentTokens.length > 0
+						? agentTokens
+								.map((agent) => {
+									const parts = [agent.type, agent.model].filter(Boolean).join(" ");
+									const label = parts ? `${Utils.esc(agent.name)} （${Utils.esc(parts)}）` : Utils.esc(agent.name);
+									return `
 						<div class="form-row">
 							<label class="form-label">${label}</label>
 							<span class="input-field-readonly">${Number(agent.tokens).toLocaleString()} トークン</span>
 						</div>`;
-					}).join("")
-					: `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
+								})
+								.join("")
+						: `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
 			} else {
-				document.getElementById("btn-select-project").style.display = "none";
-				document.getElementById("project-title-input").value = "";
-				document.getElementById("project-detail-name").textContent = "";
-				document.getElementById("project-detail-name").style.display = "none";
-				document.getElementById("project-name-input").value = "";
-				document.getElementById("project-name-input").style.display = "";
-				document.getElementById("form-row-stat-duration").style.display = "";
-				document.getElementById("form-row-stat-turns").style.display = "";
-				document.getElementById("form-row-stat-tokens").style.display = "";
-				document.getElementById("form-section-agent-tokens").style.display = "";
-				document.getElementById("project-stat-duration").textContent = "0分0秒";
-				document.getElementById("project-stat-turns").textContent = "0 ターン";
-				document.getElementById("project-stat-tokens").textContent = "0 トークン";
-				document.getElementById("project-stat-agent-tokens-rows").innerHTML = `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
 				/*
-				 * エージェントテンプレート選択行は新規作成時のみ表示(複写時は非表示)
+				 * 新規/複写モード時初期値設定
 				 */
-				const showTemplate = !this.#copyFromProject;
-				document.getElementById("form-row-agent-template").style.display = showTemplate ? "" : "none";
+				const showTemplate = !this.#copyProject;
+				document.querySelectorAll(".project-edit-section").forEach((el) => el.classList.add("hidden"));
+				document.querySelectorAll(".project-template-section").forEach((el) => el.classList.toggle("hidden", !showTemplate));
+				document.getElementById("btn-select-project").classList.add("hidden");
+				document.getElementById("project-name-input").value = "";
+				document.getElementById("project-title-input").value = "";
+				document.getElementById("project-external-enabled").checked = false;
+				document.getElementById("project-external-path-input").value = "";
+				document.getElementById("form-row-external-path").classList.add("hidden");
 				if (showTemplate) {
 					document.getElementById("project-agent-template-input").value = "";
 				}
 				document.getElementById("project-name-input").focus();
 			}
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -155,43 +155,35 @@ class ProjectSettingController {
 	 */
 	#hideForm() {
 		try {
-			/*
-			 * パネル切り替え
-			 */
-			document.getElementById("project-detail-empty").style.display = "";
-			document.getElementById("project-form-header").style.display = "none";
-			document.getElementById("project-detail-panel").style.display = "none";
-			this.#editingName = null;
-			this.#copyFromProject = null;
+			document.getElementById("project-detail-empty").classList.remove("hidden");
+			document.getElementById("project-form-header").classList.add("hidden");
+			document.getElementById("project-detail-panel").classList.add("hidden");
+			this.#editProject = null;
+			this.#copyProject = null;
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
-	 * カレントプロジェクトをサーバーから取得して表示更新します。<br>
+	 * 現在選択中のプロジェクトをサーバーから取得して表示します。<br>
 	 */
 	async #loadCurrentProject() {
 		try {
 			/*
 			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.getCurrentProject(
-				{
-					_: null,
+			await WebCtrl.doAwait(WebAPI.getCurrentProject({}), {
+				onDone: async (result) => {
+					this.#currentProject = result.data?.project || null;
 				},
-				false,
-			);
-			if (!result) {
-				return;
-			}
-
-			/*
-			 * カレントプロジェクト設定
-			 */
-			this.#currentProject = result.data?.project || null;
+				onError: () => {
+					// プロジェクト画面ではカレントプロジェクトが未選択の状態があるためエラーとしない
+					//WebUI.showError("カレントプロジェクト情報の取得に失敗しました。");
+				},
+			});
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -204,73 +196,117 @@ class ProjectSettingController {
 			/*
 			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.getProjectList({
-				_: null,
-			});
-			if (!result) {
-				return;
-			}
+			await WebCtrl.doAwait(
+				WebAPI.getProjectList({
+					//
+				}),
+				{
+					onDone: async (result) => {
+						/*
+						 * プロジェクト一覧情報設定
+						 */
+						this.#projects = result.data || [];
 
-			/*
-			 * プロジェクト一覧情報設定
-			 */
-			this.#projects = result.data || [];
+						/*
+						 * プロジェクトリスト要素取得
+						 */
+						const projectListEl = document.getElementById("project-list");
+						projectListEl.innerHTML = "";
 
-			/*
-			 * プロジェクトリスト要素取得
-			 */
-			const elProjectList = document.getElementById("project-list");
-			elProjectList.innerHTML = "";
+						/*
+						 * プロジェクト一覧描画
+						 */
+						if (this.#projects.length === 0) {
+							// プロジェクトが存在しない場合
+							const emptyProjectEl = document.createElement("div");
+							emptyProjectEl.className = "empty-msg list-item-ali-empty";
+							emptyProjectEl.textContent = "プロジェクトがありません";
+							projectListEl.appendChild(emptyProjectEl);
+							this.#hideForm();
+						} else {
+							// プロジェクトが存在する場合
+							this.#projects.forEach((project) => {
+								const projectItemEl = document.createElement("div");
+								projectItemEl.className = "list-item";
+								projectItemEl.dataset.project = project.name;
+								projectItemEl.innerHTML = `
+									<div class="list-item-icon">${Constants.ICON_PROJECT}</div>
+									<div class="list-item-content">
+										<div class="list-item-ali-info">
+											<span class="list-item-ali-label">${Utils.esc(project.name)}</span>
+											<span class="list-item-ali-caption">${Utils.esc(project.title || "")}</span>
+											${project.name === this.#currentProject ? '<span class="tag">ACTIVE</span>' : ""}
+										</div>
+										<div class="list-item-ali-meta">
+											<span>${Utils.formatDurationSec(project.durationSec ?? 0)}</span>・
+											<span>${project.turnCount ?? 0} ターン</span>・
+											<span>${(project.totalTokens ?? 0) > 0 ? project.totalTokens.toLocaleString() : "0"} トークン</span>
+										</div>
+									</div>
+									<button class="list-item-copy-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="複写">
+										${Constants.ICON_COPY}
+									</button>
+									<button class="list-item-delete-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="削除">
+										${Constants.ICON_TRASH}
+									</button>
+								`;
+								projectListEl.appendChild(projectItemEl);
+							});
 
-			/*
-			 * プロジェクト一覧描画
-			 */
-			if (this.#projects.length === 0) {
-				// プロジェクトが存在しない場合
-				const elEmpty = document.createElement("div");
-				elEmpty.className = "empty-msg list-item-ali-empty";
-				elEmpty.textContent = "既存プロジェクトは存在しません";
-				elProjectList.appendChild(elEmpty);
-				this.#hideForm();
-			} else {
-				// プロジェクトが存在する場合
-				this.#projects.forEach((project) => {
-					const elProjectItem = document.createElement("div");
-					elProjectItem.className = "list-item";
-					elProjectItem.dataset.project = project.name;
-					elProjectItem.innerHTML = `
-						<div class="list-item-icon">${Constants.ICON_PROJECT}</div>
-						<div class="list-item-content">
-							<div class="list-item-ali-info">
-								<span class="list-item-ali-label">${Utils.esc(project.name)}</span>
-								<span class="list-item-ali-caption">${Utils.esc(project.title || "")}</span>
-								${project.name === this.#currentProject ? '<span class="tag">ACTIVE</span>' : ""}
-							</div>
-							<div class="list-item-ali-meta">
-								<span>${Utils.formatDurationSec(project.durationSec ?? 0)}</span>・
-								<span>${project.turnCount ?? 0} ターン</span>・
-								<span>${(project.totalTokens ?? 0) > 0 ? (project.totalTokens).toLocaleString() : "0"} トークン</span>
-							</div>
-							</div>
-						<button class="list-item-copy-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="複写">
-							${Constants.ICON_COPY}
-						</button>
-						<button class="list-item-delete-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="削除">
-							${Constants.ICON_TRASH}
-						</button>
-					`;
-					elProjectList.appendChild(elProjectItem);
-				});
-
-				/*
-				 * 指定プロジェクトを自動選択
-				 */
-				if (selectName) {
-					this.#onClickProject(null, selectName);
-				}
-			}
+							/*
+							 * 指定プロジェクト自動選択
+							 */
+							if (selectName) {
+								const selectProject = this.#projects.find((project) => project.name === selectName) ?? null;
+								if (selectProject) {
+									this.#onClickProject(null, selectProject);
+								}
+							}
+						}
+					},
+					onError: () => {
+						WebUI.showError("プロジェクトリストの取得に失敗しました。");
+					},
+				},
+			);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * 新規作成プレースホルダーをリスト先頭へ挿入します。<br>
+	 * @param {boolean} [isCopy=false] - 複写モードの場合にtrueを指定
+	 */
+	#insertNewPlaceholder(isCopy = false) {
+		try {
+			/*
+			 * 既存のプレースホルダー削除
+			 */
+			const projectListEl = document.getElementById("project-list");
+			document.getElementById("project-new-placeholder")?.remove();
+			projectListEl.querySelector(".empty-msg")?.remove();
+
+			/*
+			 * 新規追加プレースホルダー挿入
+			 */
+			const newItemEl = document.createElement("div");
+			newItemEl.id = "project-new-placeholder";
+			newItemEl.className = "list-item new-item";
+			newItemEl.innerHTML = `
+				<div class="list-item-content">
+					<div class="list-item-ali-info">
+						<span class="list-item-ali-label">${isCopy ? "Copy" : "New"}</span>
+						<span class="list-item-ali-caption">${isCopy ? "複写作成" : "新規作成"}</span>
+					</div>
+					<div class="list-item-ali-meta">
+						<span>${isCopy ? "複写作成中です" : "新規作成中です"}</span>
+					</div>
+				</div>
+				`;
+			projectListEl.prepend(newItemEl);
+		} catch (e) {
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -280,44 +316,72 @@ class ProjectSettingController {
 	 */
 	#onListPanelClick(event) {
 		try {
+			/*
+			 * 複写ボタン要素クリック時
+			 */
 			const copyBtn = event.target.closest(".list-item-copy-btn");
 			if (copyBtn?.dataset.project) {
-				this.#onClickCopy(copyBtn.dataset.project);
+				const project = this.#projects.find((project) => project.name === copyBtn.dataset.project);
+				if (project) {
+					this.#onClickCopy(project);
+				}
 				return;
 			}
+
+			/*
+			 * 削除ボタン要素クリック時
+			 */
 			const deleteBtn = event.target.closest(".list-item-delete-btn");
 			if (deleteBtn?.dataset.project) {
-				this.#onClickDelete(deleteBtn.dataset.project);
+				const project = this.#projects.find((project) => project.name === deleteBtn.dataset.project);
+				if (project) {
+					this.#onClickDelete(project);
+				}
 				return;
 			}
+
+			/*
+			 * プロジェクトリストアイテムクリック時
+			 */
 			const projectListItem = event.target.closest(".list-item");
 			if (!projectListItem || !projectListItem.dataset.project) {
 				return;
 			}
-			this.#onClickProject(event, projectListItem.dataset.project);
+			const project = this.#projects.find((project) => project.name === projectListItem.dataset.project);
+			if (!project) {
+				return;
+			}
+			this.#onClickProject(event, project);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
 	 * プロジェクトリストアイテム選択時の処理を実行します。<br>
 	 * @param {Event} event - イベントオブジェクト
-	 * @param {string} name - 選択するプロジェクト名
+	 * @param {Object} project - 選択するプロジェクト情報
 	 */
-	#onClickProject(event, name) {
+	#onClickProject(event, project) {
 		try {
+			/*
+			 * プレースホルダー削除
+			 */
 			document.getElementById("project-new-placeholder")?.remove();
+
+			/*
+			 * 選択状態切り替え
+			 */
 			document.querySelectorAll(".list-item").forEach((element) => {
-				if (element.dataset.project === name) {
+				if (element.dataset.project === project?.name) {
 					element.classList.add("selected");
-					this.#showForm(name);
+					this.#showForm(project);
 				} else {
 					element.classList.remove("selected");
 				}
 			});
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -327,75 +391,79 @@ class ProjectSettingController {
 	 */
 	async #onClickNew(event) {
 		try {
-			document.querySelectorAll(".list-item").forEach((el) => el.classList.remove("selected"));
+			/*
+			 * 既存選択状態解除
+			 */
+			this.#copyProject = null;
+			document.querySelectorAll(".list-item").forEach((projectItemEl) => {
+				projectItemEl.classList.remove("selected");
+			});
+
+			/*
+			 * 新規追加プレースホルダー挿入
+			 */
 			this.#insertNewPlaceholder();
+
+			/*
+			 * フォーム表示
+			 */
 			this.#showForm(null);
 
 			/*
 			 * デフォルト値をサーバーから取得してフォームに適用
 			 */
-			const result = await WebAPI.getDefaultProject({ _: null }, false);
-			if (result?.data) {
-				const defaultConfig = result.data;
-				document.getElementById("project-name-input").value = defaultConfig.name || "";
-				document.getElementById("project-title-input").value = defaultConfig.title || "";
-				document.getElementById("project-name-input").focus();
-			}
+			await WebCtrl.doAwait(WebAPI.getDefaultProject({}), {
+				onDone: async (result) => {
+					const defaultConfig = result.data;
+					if (defaultConfig) {
+						document.getElementById("project-name-input").value = defaultConfig.name || "";
+						document.getElementById("project-title-input").value = defaultConfig.title || "";
+						document.getElementById("project-name-input").focus();
+					}
+				},
+				onError: () => {
+					WebUI.showError("デフォルトプロジェクト情報の取得に失敗しました。");
+				},
+			});
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
 	 * 複写ボタンクリック時の処理を実行します。<br>
-	 * @param {string} name - 複写元プロジェクト名
+	 * @param {Object} project - 複写元プロジェクト情報
 	 */
-	async #onClickCopy(name) {
+	async #onClickCopy(project) {
 		try {
-			const source = this.#projects.find((p) => p.name === name);
-			if (!source) {
-				return;
-			}
-			document.querySelectorAll(".list-item").forEach((el) => el.classList.remove("selected"));
+			/*
+			 * 既存選択状態解除
+			 */
+			document.querySelectorAll(".list-item").forEach((projectItemEl) => {
+				projectItemEl.classList.remove("selected");
+			});
+
+			/*
+			 * 新規追加プレースホルダー挿入
+			 */
 			this.#insertNewPlaceholder(true);
-			this.#copyFromProject = name;
+
+			/*
+			 * フォーム表示(複写元プロジェクト情報設定)
+			 */
+			this.#copyProject = project;
 			this.#showForm(null);
 
 			/*
 			 * 複写元の内容をフォームに適用
 			 */
-			document.getElementById("project-name-input").value = source.name;
-			document.getElementById("project-title-input").value = source.title || "";
+			document.getElementById("project-name-input").value = "";
+			document.getElementById("project-title-input").value = "";
 			document.getElementById("project-name-input").select();
 			document.getElementById("project-name-input").focus();
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
-	}
-
-	/**
-	 * 新規作成プレースホルダーをリスト先頭へ挿入します。<br>
-	 * @param {boolean} [isCopy=false] - 複写モードの場合にtrueを指定
-	 */
-	#insertNewPlaceholder(isCopy = false) {
-		const elList = document.getElementById("project-list");
-		document.getElementById("project-new-placeholder")?.remove();
-		elList.querySelector(".empty-msg")?.remove();
-		const el = document.createElement("div");
-		el.id = "project-new-placeholder";
-		el.className = "list-item new-item";
-		el.innerHTML = `
-			<div class="list-item-content">
-				<div class="list-item-ali-info">
-					<span class="list-item-ali-label">${isCopy ? "Copy" : "New"}</span>
-					<span class="list-item-ali-caption">${isCopy ? "複写作成" : "新規作成"}</span>
-				</div>
-				<div class="list-item-ali-meta">
-					<span>${isCopy ? "複写作成中です" : "新規作成中です"}</span>
-				</div>
-			</div>
-		`;
-		elList.prepend(el);
 	}
 
 	/**
@@ -408,73 +476,135 @@ class ProjectSettingController {
 			 * 保存情報取得(入力値を優先してプロジェクト名変更に対応)
 			 */
 			const savedName = document.getElementById("project-name-input").value.trim();
-			const originalProject = this.#editingName ?? savedName;
+			const originalProject = this.#editProject?.name ?? savedName;
 
 			/*
 			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.saveProject({
-				project: savedName,
-				originalProject: originalProject,
-				isNew: this.#editingName === null,
-				copyFromProject: this.#copyFromProject ?? "",
-				agentTemplate: document.getElementById("project-agent-template-input").value,
-				title: document.getElementById("project-title-input").value.trim(),
-			});
-			if (!result) {
-				return;
-			}
+			await WebCtrl.doAsync(
+				WebAPI.saveProject({
+					project: savedName, // 保存対象プロジェクト名
+					originalProject: originalProject, // 変更前プロジェクト名(新規時は同値)
+					isNew: this.#editProject === null, // 新規作成フラグ
+					copyFromProject: this.#copyProject?.name ?? "", // 複写元プロジェクト名(複写でない場合は空)
+					agentTemplate: document.getElementById("project-agent-template-input").value, // エージェントテンプレートID
+					title: document.getElementById("project-title-input").value.trim(), // プロジェクトタイトル
+					externalEnabled: document.getElementById("project-external-enabled").checked, // 外部パス使用フラグ
+					externalPath: document.getElementById("project-external-path-input").value.trim(), // 外部パス
+				}),
+				{
+					cancellable: !!this.#copyProject,
+					onDone: async (result) => {
+						/*
+						 * カレントプロジェクト再読み込み
+						 */
+						await this.#loadCurrentProject();
 
-			/*
-			 * クライアント後処理(保存対象プロジェクトを選択状態で再描画)
-			 * ※loadProjectList内でclearInfoが呼ばれるため、再描画完了後にメッセージを表示する
-			 */
-			await this.#loadCurrentProject();
-			await this.#loadProjectList(savedName);
-			if (result.message) {
-				Utils.showInfo(result.message);
-			}
+						/*
+						 * プロジェクトリスト再読み込み
+						 */
+						await this.#loadProjectList(result?.savedName ?? savedName);
+
+						/*
+						 * メッセージ表示
+						 */
+						if (result?.message) {
+							WebUI.showInfo(result.message);
+						}
+					},
+					onError: (message) => {
+						/*
+						 * エラー表示
+						 */
+						WebUI.showError(message || "プロジェクトの保存に失敗しました。");
+					},
+					onCancelled: async () => {
+						/*
+						 * フォーム非表示
+						 */
+						this.#hideForm();
+
+						/*
+						 * プロジェクトリスト再読み込み(複写前の状態に戻す)
+						 */
+						await this.#loadProjectList(null);
+
+						/*
+						 * メッセージ表示
+						 */
+						WebUI.showInfo("プロジェクトの保存をキャンセルしました。");
+					},
+				},
+			);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
 	 * 削除ボタンクリック時の処理を実行します。<br>
-	 * @param {Event} event - イベントオブジェクト
+	 * @param {Object} project - 削除するプロジェクト情報
 	 */
-	async #onClickDelete(name) {
+	async #onClickDelete(project) {
 		try {
 			/*
 			 * 確認ダイアログ
 			 */
-			if (!await Utils.confirm(`「${name}」を削除しますか？`)) {
+			if (!(await WebUI.confirm(`「${project.name}」を削除しますか？`))) {
 				return;
 			}
 
 			/*
 			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.deleteProject({
-				project: name,
-			});
-			if (!result) {
-				return;
-			}
+			await WebCtrl.doAsync(
+				WebAPI.deleteProject({
+					project: project.name, // 削除対象プロジェクト名
+				}),
+				{
+					cancellable: true,
+					onDone: async (result) => {
+						/*
+						 * 削除対象がアクティブだった場合はページリロード(カレントプロジェクトが存在しない状態になるため)
+						 */
+						if (result?.wasActive) {
+							window.location.reload();
+							return;
+						}
 
-			/*
-			 * クライアント後処理(削除対象がACTIVEプロジェクトの場合はページリロード)
-			 */
-			if (this.#currentProject === name) {
-				window.location.reload();
-				return;
-			}
-			if (this.#editingName === name) {
-				this.#hideForm();
-			}
-			await this.#loadProjectList(null);
+						/*
+						 * 編集中=削除対象の場合はフォーム非表示
+						 */
+						if (this.#editProject?.name === project.name) {
+							this.#hideForm();
+						}
+
+						/*
+						 * プロジェクトリスト再読み込み
+						 */
+						await this.#loadProjectList(null);
+					},
+					onError: (message) => {
+						/*
+						 * エラー表示
+						 */
+						WebUI.showError(message || "プロジェクトの削除に失敗しました。");
+					},
+					onCancelled: async () => {
+						/*
+						 * プロジェクトリスト再読み込み(削除前の状態に戻す)
+						 */
+						await this.#loadProjectList(this.#editProject?.name);
+
+						/*
+						 * メッセージ表示
+						 */
+						WebUI.showWarning("プロジェクトの削除をキャンセルしました。\n一部のファイルが残存している可能性があります。");
+					},
+				},
+			);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -487,22 +617,126 @@ class ProjectSettingController {
 			/*
 			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.selectProject({
-				projectName: this.#editingName,
-			});
-			if (!result) {
+			await WebCtrl.doAsync(
+				WebAPI.selectProject({
+					projectName: this.#editProject?.name, // 選択するプロジェクト名
+				}),
+				{
+					cancellable: false,
+					onDone: async () => {
+						/*
+						 * カレントプロジェクト情報更新
+						 */
+						document.body.classList.add("has-project");
+
+						/*
+						 * カレントプロジェクト再読み込み
+						 */
+						await this.#loadCurrentProject();
+
+						/*
+						 * プロジェクトリスト再読み込み(選択状態更新のため)
+						 */
+						await this.#loadProjectList();
+					},
+					onError: (message) => {
+						WebUI.showError(message || "プロジェクトの選択に失敗しました。");
+					},
+					onCancelled: () => {
+						// キャンセル処理なし
+					},
+				},
+			);
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * セッションクリアボタンクリック時の処理を行います。<br>
+	 * @param {Event} event - クリックイベント
+	 */
+	async #onClickClearSession(event) {
+		try {
+			/*
+			 * 確認ダイアログ
+			 */
+			const confirmed = await WebUI.confirm(`プロジェクト「${this.#editProject?.name}」のセッション情報をクリアします。\nログ・会話・セッションが削除され、元に戻すことはできません。\nクリアしてよろしいですか？`);
+			if (!confirmed) {
 				return;
 			}
 
 			/*
-			 * クライアント後処理
+			 * サーバーサイド処理
 			 */
-			document.body.classList.add("has-project");
-			await this.#loadCurrentProject();
-			await this.#loadProjectList();
-			this.#hideForm();
+			await WebCtrl.doAsync(
+				WebAPI.clearSession({
+					project: this.#editProject?.name, // セッションクリア対象プロジェクト名
+				}),
+				{
+					cancellable: false,
+					onDone: async (result) => {
+						/*
+						 * カレントプロジェクト再読み込み
+						 */
+						await this.#loadProjectList(this.#editProject?.name);
+
+						/*
+						 * メッセージ表示
+						 */
+						if (result?.message) {
+							WebUI.showInfo(result.message);
+						}
+					},
+					onError: (message) => {
+						WebUI.showError(message || "セッションクリアに失敗しました。");
+					},
+					onCancelled: () => {
+						// キャンセル処理なし
+					},
+				},
+			);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * ログダウンロードボタンクリック時の処理を行います。<br>
+	 * @param {Event} event - クリックイベント
+	 */
+	async #onClickDownloadLogs(event) {
+		try {
+			/*
+			 * サーバーサイド処理
+			 */
+			await WebCtrl.doAwait(
+				WebAPI.downloadLogs({
+					project: this.#editProject?.name, // ダウンロード対象プロジェクト名
+				}),
+				{
+					onDone: async () => {
+						//
+					},
+					onError: () => {
+						WebUI.showError("ログのダウンロードに失敗しました。");
+					},
+				},
+			);
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * 外部パス使用チェックボックス変更時の処理を実行します。<br>
+	 * @param {Event} event - イベントオブジェクト
+	 */
+	#onChangeExternalEnabled(event) {
+		try {
+			document.getElementById("form-row-external-path").classList.toggle("hidden", !event.target.checked);
+		} catch (e) {
+			WebUI.catchFatal(e);
 		}
 	}
 }

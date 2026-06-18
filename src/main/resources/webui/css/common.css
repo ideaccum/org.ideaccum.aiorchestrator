@@ -39,8 +39,8 @@
 	--fs-btn: 0.8rem; /* ボタン */
 
 	/* ---- ボーダー ---- */
-	--border-width: 1px; /* 標準ボーダー幅 */
-	--border-field-width: 1px; /* フォームフィールドボーダー幅 */
+	--border-width: 1px; /* 標準ボーダー幅(フォームフィールドも共用) */
+	--border-toast-accent: 3px; /* トーストアクセントボーダー幅 */
 
 	/* ---- 角丸 ---- */
 	--radius-thin-scrollbar: 0.2em; /* 細スクロールバー角丸 */
@@ -55,20 +55,31 @@
 	--size-header-logo: 1rem; /* ヘッダーロゴサイズ(16px) */
 	--size-spinner: 2em; /* ローディングスピナー直径 */
 	--size-notice-spinner: 1.1em; /* ノーティスバー内スピナー直径 */
+	--size-spinner-sm: 1em; /* 小スピナー直径(テキストと同サイズ) */
 	--size-statusdot: 0.65em; /* エージェントカードステータスドット直径 */
 	--size-card-avatar: 2.2em; /* カードアバター直径 */
 	--w-scrollbar: 0.4em; /* 細スクロールバー幅 */
 	--w-btn-min: 3.5rem; /* ボタン最小幅 */
+	--h-toast-progress: 2px; /* トーストプログレスバー高さ */
 	--weight-spinner: 0.2em; /* ローディングスピナーボーダー幅 */
 	--weight-notice-spinner: 0.15em; /* ノーティスバー内スピナーボーダー幅 */
+	--weight-spinner-sm: 0.12em; /* 小スピナーボーダー幅 */
+	--w-number-spin-btns: 1.4em; /* 数値入力カスタムスピンボタン幅 */
+	--size-number-spin-icon-w: 0.28em; /* 数値入力スピンアイコン三角形の半幅 */
+	--size-number-spin-icon-h: 0.32em; /* 数値入力スピンアイコン三角形の高さ */
 
 	/* ---- レイアウトサイズ ---- */
-	--h-header: 1.875rem; /* ヘッダー高さ */
+	--h-body: 100vh; /* ページ高さ */
+	--vw-full: 100vw; /* ビューポート全幅 */
+	--h-header: 1.875rem; /* ヘッダー高さ(左ペインヘッダーも共用) */
 	--h-content-header: 2.5rem; /* コンテンツヘッダー高さ */
 	--w-split-left: 22em; /* 左右分割左ペイン幅 */
+	--w-toast: 32rem; /* トースト通知幅 */
+	--w-dialog-min: 20em; /* 確認ダイアログ最小幅 */
+	--w-dialog-max: 32em; /* 確認ダイアログ最大幅 */
 	--w-single-layout: 80vw; /* 単一レイアウト幅 */
 	--h-card-body: 15em; /* カード本文固定高さ */
-	--h-card-owner-body: 6em; /* オーナーカード本文固定高さ */
+	--h-card-owner-body: 8em; /* オーナーカード本文固定高さ */
 	--h-idle-placeholder: 3.85em; /* アイドルプレースホルダー最小高さ */
 	--h-card-message: 4.5em; /* カードメッセージエリア固定高さ */
 	--h-card-footer: 1.625em; /* カードフッター最小高さ */
@@ -112,6 +123,8 @@
 	--sp-body-h: 0.6em; /* カード本文横パディング */
 	--sp-footer-v: 0.35em; /* カードフッター縦パディング */
 	--sp-footer-h: 0.4em; /* カードフッター横パディング */
+	--sp-toast: 1.35rem; /* トースト内部パディング */
+	--sp-nav-item-v: 0.2rem; /* ヘッダーナビゲーションアイテム縦パディング */
 	--sp-confirm-message-t: 0.2em; /* 確認ダイアログメッセージ上パディング */
 	--sp-confirm-message-b: 1.3em; /* 確認ダイアログメッセージ下パディング */
 	--sp-confirm-message-h: 0.2em; /* 確認ダイアログメッセージ横パディング */
@@ -158,8 +171,14 @@
 	--gap-sm: 0.58em; /* 小間隔 */
 	--gap-xs: 0.4em; /* 極小間隔 */
 	--gap-xxs: 0.2em; /* 超極小間隔 */
+	--gap-nav: 2px; /* ヘッダーナビゲーション間隔 */
 	--gap-form-row: 0.3em; /* フォーム行内ラベル＋入力間隔 */
 	--gap-check: 0.5em; /* チェックボックス＋ラベル間隔 */
+	--w-toggle: 2.5em; /* トグルスイッチ幅 */
+	--h-toggle: 1.45em; /* トグルスイッチ高さ */
+	--sp-toggle-knob: 0.15em; /* トグルノブ内側余白 */
+	--size-toggle-knob: calc(var(--h-toggle) - var(--sp-toggle-knob) * 2); /* トグルノブサイズ */
+	--toggle-knob-travel: calc(var(--w-toggle) - var(--size-toggle-knob) - var(--sp-toggle-knob) * 2); /* トグルノブ移動距離 */
 	--gap-turn-meta: 0.5em; /* ターンメタ内アイテム間隔 */
 
 	/* ---- 行間 ---- */
@@ -172,6 +191,17 @@
 	--opacity-active: 0.7; /* アクティブ押下状態 */
 	--opacity-disabled: 0.65; /* 非活性状態 */
 
+	/* ---- z-index ---- */
+	--z-boot-overlay: 9999; /* ブートオーバーレイ */
+	--z-api-processing: 9000; /* API処理中オーバーレイ */
+	--z-confirm-backdrop: 8000; /* 確認ダイアログバックドロップ */
+	--z-toast: 7000; /* トースト通知コンテナ */
+	--z-notice-bar: 600; /* フッターノーティスバー */
+	--z-content-header: 2; /* コンテンツヘッダー(スクロール重ね順) */
+
+	/* ---- フッターノーティスバー ---- */
+	--h-notice-bar: calc(var(--sp-notice-bar-v) * 2 + var(--fs-small) * 1.235);
+
 	/* ---- トランジション ---- */
 	--transition-fast: 0.15s; /* 高速(ホバー等) */
 	--transition-base: 0.2s; /* 標準(フォーカス・色変化) */
@@ -179,17 +209,27 @@
 
 	/* ---- アニメーション時間 ---- */
 	--anim-loading-spinner: 0.9s; /* スピナー回転時間 */
+	--offset-slide-dialog: -0.5em; /* 確認ダイアログスライドアニメーション変位 */
+	--offset-toast-slide: 1rem; /* トーストスライドアニメーション変位 */
 	--anim-statusdot-pulse: 1.4s; /* ドット点滅時間 */
 	--anim-cursor-blink: 0.8s; /* カーソル点滅時間 */
+	--anim-typing-dots: 2.1s; /* タイピングドットアニメーション時間 */
+	--w-typing-dots: 1.6em; /* タイピングドットコンテナ幅 */
+	--h-typing-dots: 0.7em; /* タイピングドットコンテナ高さ */
+	--size-typing-dot: 0.35em; /* タイピングドット1粒サイズ */
+	--gap-typing-dots: 0.3em; /* タイピングドット左マージン(テキストとの間隔) */
 
 	/* ---- 固定カラー ---- */
 	--color-avatar-text: #ffffff; /* アバター文字色(着色背景上の白固定) */
+	--color-backdrop: rgb(0 0 0 / 50%); /* モーダルバックドロップ背景色 */
+	--color-overlay-processing: rgba(0, 0, 0, 0.6); /* API処理中オーバーレイ背景色 */
+	--blur-overlay-processing: 0; /* API処理中オーバーレイ背景ぼかし半径 */
+	--color-shadow: rgba(0, 0, 0, 0.4); /* ボックスシャドウ色 */
+	--shadow-toast: 0 2px 8px var(--color-shadow); /* トースト通知ボックスシャドウ */
 
 	/* ---- ページ ---- */
 	--color-bg: var(--theme-page-bg); /* ページ背景色 */
-	--color-text: var(--theme-page-text); /* ページ本文テキスト */
-	--color-text-heading: var(--theme-page-text); /* 見出し・強調テキスト */
-	--color-text-title: var(--theme-page-text); /* ヘッダータイトル */
+	--color-text: var(--theme-page-text); /* ページ本文・見出し・タイトルテキスト */
 	--color-text-sub: var(--theme-page-text-sub); /* 補足・薄テキスト */
 
 	/* ---- ページヘッダー ---- */
@@ -238,7 +278,7 @@
 	--color-card-border: var(--theme-card-border); /* カードボーダー色 */
 
 	/* ---- コードブロック ---- */
-	--color-code-bg: var(--theme-field-bg); /* コードブロック・インラインコード背景色 */
+	--color-code-bg: var(--theme-code-bg); /* コードブロック・インラインコード背景色 */
 
 	/* ---- タグ ---- */
 	--color-tag-bg: var(--theme-tag-bg); /* タグ背景色 */
@@ -246,8 +286,7 @@
 	--color-tag-border: var(--theme-tag-border); /* タグボーダー色 */
 
 	/* ---- アクセント ---- */
-	--color-accent: var(--theme-accent); /* スピナー・汎用アクセント */
-	--color-link: var(--theme-accent); /* リンク・ストリームカーソル */
+	--color-accent: var(--theme-accent); /* スピナー・リンク・汎用アクセント */
 
 	/* ---- 新規アイテム ---- */
 	--color-new-item-bg: var(--theme-new-item-bg); /* 新規アイテム背景色 */
@@ -256,6 +295,7 @@
 	/* ---- 状態色: 非活性 ---- */
 	--color-idle: var(--theme-idle); /* 非活性テキスト */
 	--color-idle-bg: var(--theme-idle-bg); /* 非活性背景 */
+	--color-toggle-off: var(--theme-toggle-off); /* トグルスイッチOFF時トラック色 */
 	--color-idle-border-a: rgb(from var(--color-idle) r g b / 30%); /* 非活性ボーダー(半透明) */
 
 	/* ---- 状態色: 情報・成功 ---- */

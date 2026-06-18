@@ -140,6 +140,11 @@
 	flex-direction: column;
 	gap: var(--gap-xs);
 }
+/* ---- プリセット行ヒントアイコン ---- */
+.owner-preset-hint {
+	flex-shrink: 0;
+	opacity: var(--opacity-active);
+}
 /* ---- プリセットボタン行 ---- */
 .owner-preset-row {
 	display: flex;
@@ -174,7 +179,7 @@
 }
 .owner-prompt-textarea:focus {
 	outline: none;
-	border-color: var(--color-link);
+	border-color: var(--color-accent);
 }
 .owner-prompt-textarea:disabled {
 	opacity: var(--opacity-disabled);
@@ -272,18 +277,6 @@
 	font-size: var(--fs-small);
 	color: var(--color-text);
 	word-break: break-word;
-}
-/* ---- ストリーミングカーソル点滅 ---- */
-.turn-text.streaming::after {
-	content: "▋";
-	color: var(--color-link);
-	animation: cursor-blink var(--anim-cursor-blink) step-end infinite;
-	font-size: var(--fs-small);
-}
-/* ---- カーソル点滅アニメーション ---- */
-@keyframes cursor-blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0; }
 }
 
 /*

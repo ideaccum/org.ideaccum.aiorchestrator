@@ -16,6 +16,13 @@
 :root {
 }
 
+/* ---- プロジェクト操作ボタン行(横並び) ---- */
+#form-row-clear-session {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--gap-sm);
+}
+
 /* ---- エージェントトークン内訳セクション ---- */
 #form-section-agent-tokens {
 	display: flex;

@@ -20,6 +20,7 @@
 		<link rel="stylesheet" href="css/theme.css" />
 		<link rel="stylesheet" href="css/common.css" />
 		<link rel="stylesheet" href="css/layout.css" />
+		<link rel="stylesheet" href="css/icons.css" />
 		<link rel="stylesheet" href="config_setting.css" />
 	</head>
 	<body>
@@ -34,7 +35,7 @@
 			<nav class="header-nav">
 				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
 				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
-				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/process_monitor.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
 				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
 				<a href="/webui/config_setting.html" class="header-nav-item header-nav-active">設定</a>
 			</nav>
@@ -43,25 +44,24 @@
 
 		<!-- ノーティスバー -->
 		<div id="page-notice" class="page-notice">
-			<div id="notice-spinner" class="loading-spinner"></div>
+			<div id="notice-spinner" class="loading-spinner loading-spinner-sm"></div>
 			<span id="notice-text"></span>
 		</div>
 
 		<!-- 切断状態パネル -->
 		<div class="disconnected-panel">
 			<div class="loading-spinner"></div>
-			<span>サーバーとの接続が切断されました<br>再接続を待機しています</span>
+			<span>サーバーとの接続が切断されました<br />再接続を待機しています</span>
 		</div>
 
 		<!-- エラー表示パネル -->
-		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<div id="page-message-error" class="page-message-error hidden"></div>
 		<!-- 警告メッセージパネル -->
-		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<div id="page-message-warn" class="page-message-warn hidden"></div>
 		<!-- 情報メッセージパネル -->
-		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+		<div id="page-message-info" class="page-message-info hidden"></div>
 
-
-		<!-- 設定ページヘッダー(保存ボタン) -->
+		<!-- ページヘッダー -->
 		<div class="content-header">
 			<span class="content-title"></span>
 			<div class="btn-row">
@@ -72,7 +72,7 @@
 		<!-- メインコンテンツ -->
 		<div class="main scrollbar-thin">
 			<div class="single-layout">
-				<!-- フォーム本体 -->
+				<!-- 設定フォーム -->
 				<div class="form-panel">
 					<!-- アプリケーション設定 -->
 					<div class="form-section-label">アプリケーション設定</div>
@@ -107,23 +107,23 @@
 					<div class="form-section-label">CLI コマンド設定</div>
 					<div class="form-row">
 						<label class="form-label" for="field-cli-claude">Claude Code CLI</label>
-						<input id="field-cli-claude" class="input-field" type="text" placeholder="例: %APPDATA%
-pm\claude.cmd" />
+						<input id="field-cli-claude" class="input-field" type="text" placeholder="例: %APPDATA%\npm\claude.cmd" />
 					</div>
 					<div class="form-row">
 						<label class="form-label" for="field-cli-gemini">Gemini CLI</label>
-						<input id="field-cli-gemini" class="input-field" type="text" placeholder="例: %APPDATA%
-pm\gemini.cmd" />
+						<input id="field-cli-gemini" class="input-field" type="text" placeholder="例: %APPDATA%\npm\gemini.cmd" />
+					</div>
+					<div class="form-row">
+						<label class="form-label" for="field-cli-antigravity">Antigravity CLI</label>
+						<input id="field-cli-antigravity" class="input-field" type="text" placeholder="例: %USERPROFILE%\AppData\Local\agy\bin\agy.exe" />
 					</div>
 					<div class="form-row">
 						<label class="form-label" for="field-cli-codex">Codex CLI</label>
-						<input id="field-cli-codex" class="input-field" type="text" placeholder="例: %APPDATA%
-pm\codex.cmd" />
+						<input id="field-cli-codex" class="input-field" type="text" placeholder="例: %APPDATA%\npm\codex.cmd" />
 					</div>
 					<div class="form-row">
 						<label class="form-label" for="field-cli-copilot">GitHub Copilot CLI</label>
-						<input id="field-cli-copilot" class="input-field" type="text" placeholder="例: %APPDATA%
-pm\copilot.cmd" />
+						<input id="field-cli-copilot" class="input-field" type="text" placeholder="例: %APPDATA%\npm\copilot.cmd" />
 					</div>
 				</div>
 			</div>
@@ -133,16 +133,21 @@ pm\copilot.cmd" />
 		<script src="lib/marked/marked-12.0.2.min.js"></script>
 		<script src="js/constants.js"></script>
 		<script src="js/utils.js"></script>
+		<script src="js/webui.js"></script>
 		<script src="js/webapi.js"></script>
-		<script src="js/content.js"></script>
-		<script src="js/header.js"></script>
+		<script src="js/webctrl.js"></script>
+		<script src="js/page.js"></script>
 		<script src="config_setting.js"></script>
 		<script>
-			Promise.all([
-				new ContentController().init(),
-				new HeaderController().init(),
-				new ConfigSettingController().init(),
-			]).finally(() => Utils.hideBootOverlay());
+			Utils.init().then(() => {
+				WebUI.init();
+				return Promise.all([
+					new PageController().init(), //
+					new ConfigSettingController().init(), //
+				]).finally(() => {
+					WebUI.hideOverlay();
+				});
+			});
 		</script>
 	</body>
 </html>

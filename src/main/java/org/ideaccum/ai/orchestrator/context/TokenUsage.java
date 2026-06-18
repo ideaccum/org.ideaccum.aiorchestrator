@@ -54,7 +54,6 @@ public class TokenUsage implements Constants, Serializable {
 	 * 使用トークン量を追加します。<br>
 	 * @param inputTokens 入力トークン数
 	 * @param outputTokens 出力トークン数 
-	 * @param othrerTokens その他発生トークン数
 	 */
 	public void add(long inputTokens, long outputTokens) {
 		this.inputTokens += inputTokens;

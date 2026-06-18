@@ -4,6 +4,9 @@ import org.ideaccum.ai.orchestrator.Constants;
 
 /**
  * アプリケーションで発生する例外ラッパークラスです。<br>
+ * <p>
+ * この例外クラスはアプリケーション内部で発生したユーザー側には詳細提供不要な内部エラー発生時に利用されます。<br>
+ * </p>
  * 
  * @author Kitagawa<br>
  * 
@@ -12,14 +15,14 @@ import org.ideaccum.ai.orchestrator.Constants;
  * 2026/03/30	Kitagawa		新規作成
  *-->
  */
-public class ApplicationException extends RuntimeException implements Constants {
+public class InternalException extends RuntimeException implements Constants {
 
 	/**
 	 * コンストラクタ<br>
 	 * @param message 例外メッセージ
 	 * @param cause ルート例外
 	 */
-	public ApplicationException(String message, Throwable cause) {
+	public InternalException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
@@ -27,7 +30,7 @@ public class ApplicationException extends RuntimeException implements Constants 
 	 * コンストラクタ<br>
 	 * @param message 例外メッセージ
 	 */
-	public ApplicationException(String message) {
+	public InternalException(String message) {
 		super(message);
 	}
 }

@@ -82,6 +82,9 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			list.add(sessionId);
 		}
 
+		// フォルダ信頼確認スキップ
+		list.add("--skip-trust");
+
 		// 新規セッション指定
 		// Gemini CLI はセッションID指定による新規開始強制をサポートしない
 
@@ -95,7 +98,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 	 */
 	@Override
 	protected void prepare() throws Throwable {
-		Files.createDirectories(getContext().getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".gemini"));
+		Files.createDirectories(getContext().getAgentRootPath().resolve(AGENT_CONFIG_DIR_GEMINI));
 	}
 
 	/**
@@ -111,13 +114,18 @@ public class GeminiCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			if (response.startsWith("Error authenticating")) {
 				result = "認証が行われていません。";
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupErrorで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -153,10 +161,6 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			if (response.indexOf("tool_use") >= 0) {
-				System.out.println("***");
-			}
-
 			JsonNode node = MAPPER.readTree(response);
 			String type = node.path("type").asString();
 
@@ -190,11 +194,20 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				if ("wrtite_file".equals(node.path("tool_name").asString())) {
 					result = "ファイル書き込み : " + node.path("parameters").path("file_path").asString();
 				}
+				if ("replace".equals(node.path("tool_name").asString())) {
+					result = "ファイル更新 : " + node.path("parameters").path("file_path").asString();
+				}
 				if ("list_directory".equals(node.path("tool_name").asString())) {
 					result = "ディレクトリ取得 : " + node.path("parameters").path("dir_path").asString();
 				}
 				if ("google_web_search".equals(node.path("tool_name").asString())) {
 					result = "Web検索 : " + node.path("parameters").path("query").asString();
+				}
+				if ("invoke_agent".equals(node.path("tool_name").asString())) {
+					result = "エージェント呼び出し: " + node.path("parameters").path("agent_name").asString();
+				}
+				if ("run_shell_command".equals(node.path("tool_name").asString()) || "shell".equals(node.path("tool_name").asString())) {
+					result = "シェルコマンド実行: " + node.path("parameters").path("command").asString();
 				}
 			}
 			if ("tool_result".equals(type)) {
@@ -203,16 +216,20 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			if ("result".equals(type)) {
 				result = "処理が完了しました。";
 			}
+			if ("error".equals(type)) {
+				result = "エラー: " + node.path("message").asString();
+			}
 
 			// メッセージフック漏れ確認用エラーコンソール出力
 			if (result == null) {
-				System.err.println("[WARN] " + node.toString());
+				log.warn("[Internal] GeminiCliAgentのlookupProgressでメッセージフック漏れがあります : " + node.toString());
 				result = node.toString();
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupProgressで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -236,6 +253,8 @@ public class GeminiCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupSessionIdで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -279,7 +298,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				// deltaがfalseの場合は改行追加
 				if (!node.path("delta").asBoolean()) {
 					deltaStatus = false;
-					return result = result + "\n";
+					return result + "\n";
 				} else {
 					deltaStatus = true;
 					return result;
@@ -292,6 +311,8 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				return null;
 			}
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupContentで予期せぬエラーが発生しました。", e);
 			if (deltaStatus) {
 				deltaStatus = false;
 				return "\n";
@@ -323,8 +344,21 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				}
 			}
 
-			// stats.modelsが存在しない場合はスキップ
-			JsonNode modelsNode = node.path("stats").path("models");
+			// statsが存在しない場合はスキップ
+			JsonNode statsNode = node.path("stats");
+			if (statsNode.isMissingNode() || statsNode.isNull()) {
+				return null;
+			}
+
+			// stats.input_tokens、stats.output_tokens が直接存在する場合
+			long newFormatInput = statsNode.path("input_tokens").asLong(-1L);
+			long newFormatOutput = statsNode.path("output_tokens").asLong(-1L);
+			if (newFormatInput >= 0 && newFormatOutput >= 0) {
+				return new TokenUsage(newFormatInput, newFormatOutput);
+			}
+
+			// stats.models[*].tokens.prompt、candidates、thoughtsの場合は後続で加算
+			JsonNode modelsNode = statsNode.path("models");
 			if (modelsNode.isMissingNode() || modelsNode.isNull()) {
 				return null;
 			}
@@ -352,6 +386,8 @@ public class GeminiCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupUsageで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}

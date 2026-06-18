@@ -2,6 +2,7 @@
  * ログビューページコントローラースクリプトクラスです。<br>
  * <p>
  * アクティブプロジェクトの会話ログを一覧表示する機能を提供します。<br>
+ * オーケストレーター実行中はSSEイベントを受信してリアルタイムに会話ターンを追記します。<br>
  * </p>
  *
  * @author Kitagawa<br>
@@ -9,20 +10,21 @@
  *<!--
  * 更新日		更新者			更新内容
  * 2026/05/15	Kitagawa		新規作成
+ * 2026/06/10	Kitagawa		SSEリアルタイム更新・ストリーミング表示対応
  *-->
  */
 class LogViewController {
+	/** ストリーミングエージェントマップ(キー:エージェント名) */
+	#liveAgents;
+
 	/**
 	 * コンストラクタ<br>
 	 */
 	constructor() {
 		try {
-			marked.setOptions({
-				breaks: true, // GitHub Flavored Markdown を使用
-				gfm: true, // 単一の改行(\n)を<br>に変換
-			});
+			this.#liveAgents = {};
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -32,140 +34,462 @@ class LogViewController {
 	async init() {
 		try {
 			/*
-			 * 会話ログの初期表示
+			 * SSEイベントハンドラ登録(非同期処理前に登録してイベントを取りこぼさない)
 			 */
-			await this.#loadLog();
+			document.addEventListener(Constants.SSE_EVENT_NAME, (event) => this.#handleEvent(event.detail));
 
 			/*
-			 * イベントハンドラ登録
+			 * 会話ログ初期表示
 			 */
-			document.getElementById("btn-refresh").onclick = () => this.#loadLog();
+			await this.#loadLog();
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
 	 * 会話ログをサーバーから取得して画面に表示します。<br>
+	 * ストリーミング中のライブターンは末尾に再アタッチします。<br>
 	 */
 	async #loadLog() {
 		try {
 			/*
-			 * 会話ログ取得
+			 * サーバーサイド処理
 			 */
-			const result = await WebAPI.getConversationLog({ _: null }, true);
-			if (!result) {
-				return;
-			}
+			await WebCtrl.doAwait(WebAPI.getConversationLog({}), {
+				onDone: async (result) => {
+					/*
+					 * 表示エリア初期化
+					 */
+					const entiriesEl = document.getElementById("log-entries");
+					const emptyEntryEl = document.getElementById("log-empty");
+					entiriesEl.innerHTML = "";
 
-			const projectName = result.data?.projectName || "";
-			if (!projectName) {
-				return;
-			}
+					/*
+					 * 会話ログ取得
+					 */
+					const conversations = result.data?.conversations || [];
+					if (conversations.length === 0 && Object.keys(this.#liveAgents).length === 0) {
+						emptyEntryEl.classList.remove("hidden");
+						entiriesEl.classList.add("hidden");
+						return;
+					}
+					emptyEntryEl.classList.add("hidden");
+					entiriesEl.classList.remove("hidden");
 
-			const conversations = result.data?.conversations || [];
+					/*
+					 * 静的ログターン描画
+					 */
+					conversations.forEach((conversation, index) => {
+						/*
+						 * ライブ状態エージェント同一ターン静的描画をスキップ
+						 */
+						const liveAgent = this.#liveAgents[conversation.agentName];
+						if (liveAgent && liveAgent.timestamp === conversation.timestamp) {
+							return;
+						}
 
-			/*
-			 * 会話ログ描画
-			 */
-			const elEntries = document.getElementById("log-entries");
-			const elEmpty = document.getElementById("log-empty");
-			elEntries.innerHTML = "";
-			if (conversations.length === 0) {
-				elEmpty.style.display = "";
-				elEntries.style.display = "none";
-				return;
-			}
-			elEmpty.style.display = "none";
-			elEntries.style.display = "";
-			elEntries.className = "log-entries";
-			conversations.forEach((conv, index) => {
-				const prevConv = index > 0 ? conversations[index - 1] : null;
-				const elapsed = LogViewController.#calcElapsed(prevConv?.timestamp, conv.timestamp);
+						/*
+						 * ターン描画情報取得
+						 */
+						const prevConversation = index > 0 ? conversations[index - 1] : null;
+						const elapsed = Utils.calcElapsed(prevConversation?.timestamp, conversation.timestamp);
+						const isOwner = conversation.agentName === Constants.OWNER_AGENT_NAME;
+						const tokenText = Utils.formatTokenText(conversation.agentName, conversation.tokenUsage?.inputTokens, conversation.tokenUsage?.outputTokens);
+						const agentInitial = (conversation.agentName || "?").charAt(0).toUpperCase();
+						const agentColor = Utils.avatarColor(conversation.agentName || "");
 
-				const isOwner = conv.agentName === Constants.OWNER_AGENT_NAME;
-				const inTokens = conv.tokenUsage?.inputTokens || 0;
-				const outTokens = conv.tokenUsage?.outputTokens || 0;
-				const totalTokens = inTokens + outTokens;
-				const tokenText = isOwner ? "User Prompt" : conv.tokenUsage ? totalTokens.toLocaleString() + " Tokens (IN: " + inTokens.toLocaleString() + " / OUT: " + outTokens.toLocaleString() + ")" : "—";
+						/*
+						 * ターンパネル要素
+						 */
+						const turnEl = document.createElement("div");
+						turnEl.className = "log-turn" + (isOwner ? " is-owner" : "");
 
-				const turn = document.createElement("div");
-				turn.className = "log-turn" + (isOwner ? " is-owner" : "");
+						/*
+						 * アバター要素
+						 */
+						const avatarEl = document.createElement("div");
+						avatarEl.className = "log-turn-avatar";
+						avatarEl.style.background = agentColor;
+						avatarEl.textContent = agentInitial;
 
-				const initial = (conv.agentName || "?").charAt(0).toUpperCase();
-				const avatarColor = Utils.avatarColor(conv.agentName || "");
+						/*
+						 * ターンタイトル要素
+						 */
+						const titleEl = document.createElement("div");
+						titleEl.className = "log-turn-title";
+						titleEl.innerHTML = '<span class="log-agent-name">' + Utils.esc(conversation.agentName || "") + "</span>" + '<span class="log-turn-timestamp">' + Utils.esc(conversation.timestamp || "") + "</span>";
 
-				/*
-				 * グリッド: 列1=アバター 列2=タイトル/本文/トークン
-				 */
-				const avatar = document.createElement("div");
-				avatar.className = "log-turn-avatar";
-				avatar.style.background = avatarColor;
-				avatar.textContent = initial;
+						/*
+						 * ターン本文要素
+						 */
+						const bodyEl = document.createElement("div");
+						bodyEl.className = "log-turn-body md-content";
+						bodyEl.innerHTML = marked.parse(Utils.filterKeywordLines(conversation.content || ""));
 
-				const title = document.createElement("div");
-				title.className = "log-turn-title";
-				title.innerHTML =
-					'<span class="log-agent-name">' + Utils.esc(conv.agentName || "") + "</span>" +
-					'<span class="log-turn-timestamp">' + Utils.esc(conv.timestamp || "") + "</span>";
+						/*
+						 * トークン情報要素
+						 */
+						const tokensEl = document.createElement("div");
+						tokensEl.className = "log-turn-tokens";
+						tokensEl.textContent = tokenText + (elapsed != null ? "　" + elapsed : "");
 
-				const body = document.createElement("div");
-				body.className = "log-turn-body md-content";
-				body.innerHTML = marked.parse(conv.content || "");
+						/*
+						 * DOM構築
+						 */
+						turnEl.appendChild(avatarEl);
+						turnEl.appendChild(titleEl);
+						turnEl.appendChild(bodyEl);
+						turnEl.appendChild(tokensEl);
+						entiriesEl.appendChild(turnEl);
+					});
 
-				const tokens = document.createElement("div");
-				tokens.className = "log-turn-tokens";
-				tokens.textContent = tokenText + (elapsed !== "—" ? "　" + elapsed : "");
+					/*
+					 * ライブターンを末尾に再アタッチ
+					 */
+					Object.values(this.#liveAgents).forEach((liveAgent) => {
+						entiriesEl.appendChild(liveAgent.turnEl);
+					});
 
-				turn.appendChild(avatar);
-				turn.appendChild(title);
-				turn.appendChild(body);
-				turn.appendChild(tokens);
-				elEntries.appendChild(turn);
+					/*
+					 * 自動スクロール
+					 */
+					WebUI.scrollBottom(document.querySelector(".main"));
+				},
+				onError: () => {
+					/*
+					 * エラー表示
+					 */
+					WebUI.showError("会話ログの取得に失敗しました。");
+				},
 			});
-
-			// 描画完了後にスクロール末端へ移動
-			const main = document.querySelector(".main");
-			if (main) {
-				main.scrollTop = main.scrollHeight;
-			}
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
 	/**
-	 * 2つのタイムスタンプから所要時間文字列を計算します。<br>
-	 * @param {string|null} prevTimestamp - 前ターンのタイムスタンプ
-	 * @param {string|null} curTimestamp - 現ターンのタイムスタンプ
-	 * @returns {string} 所要時間文字列
+	 * SSEイベントをハンドラへディスパッチします。<br>
+	 * @param {{ type: string }} data - パース済みSSEイベント
 	 */
-	static #calcElapsed(prevTimestamp, curTimestamp) {
-		if (!prevTimestamp || !curTimestamp) {
-			return "—";
-		}
-		const parse = (timestamp) => {
-			const matcher = timestamp.match(/(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-			if (!matcher) {
-				return null;
+	#handleEvent(data) {
+		try {
+			/*
+			 * ログコンテンツ更新
+			 */
+			if (data.type === Constants.SSE_TYPE_AGENT_INITIALIZED) {
+				this.#onSseAgentInitialized(data);
+			} else if (data.type === Constants.SSE_TYPE_AGENT_START) {
+				this.#onSseAgentStart(data);
+			} else if (data.type === Constants.SSE_TYPE_AGENT_CONTENT) {
+				this.#onSseAgentContent(data);
+			} else if (data.type === Constants.SSE_TYPE_AGENT_FINISH) {
+				this.#onSseAgentFinish(data);
+			} else if (data.type === Constants.SSE_TYPE_AGENT_ERROR) {
+				this.#onSseAgentError(data);
+			} else if (data.type === Constants.SSE_TYPE_ORCHESTRATOR_DONE || data.type === Constants.SSE_TYPE_ORCHESTRATOR_STOPPED) {
+				this.#onSseOrchestratorDone(data);
+			} else if (data.type === Constants.SSE_TYPE_DISCONNECTED) {
+				this.#onSseDisconnected(data);
 			}
-			return new Date(parseInt(matcher[1]), parseInt(matcher[2]) - 1, parseInt(matcher[3]), parseInt(matcher[4]), parseInt(matcher[5]), parseInt(matcher[6]));
-		};
-		const prev = parse(prevTimestamp);
-		const cur = parse(curTimestamp);
-		if (!prev || !cur) {
-			return "—";
+		} catch (e) {
+			WebUI.catchFatal(e);
 		}
-		const diffMs = cur - prev;
-		if (diffMs < 0) {
-			return "—";
+	}
+
+	/**
+	 * SSE(agent_initialized)イベント処理を実行します。<br>
+	 */
+	async #onSseAgentInitialized(data) {
+		try {
+			/*
+			 * ライブターン削除
+			 */
+			Object.values(this.#liveAgents).forEach((liveAgent) => {
+				liveAgent.turnEl.remove();
+			});
+			this.#liveAgents = {};
+
+			/*
+			 * ログ再読み込み
+			 */
+			await this.#loadLog();
+		} catch (e) {
+			WebUI.catchFatal(e);
 		}
-		const sec = Math.floor(diffMs / 1000);
-		if (sec < 60) {
-			return sec + "秒";
+	}
+
+	/**
+	 * SSE(agent_start)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	#onSseAgentStart(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {
+				agentName, //
+				timestamp, //
+			} = data;
+
+			/*
+			 * 描画情報取得
+			 */
+			const isOwner = agentName === Constants.OWNER_AGENT_NAME;
+			const agentInitial = (agentName || "?").charAt(0).toUpperCase();
+			const agentColor = Utils.avatarColor(agentName || "");
+
+			/*
+			 * ターン要素構築
+			 */
+			const turnEl = document.createElement("div");
+			turnEl.className = "log-turn is-streaming" + (isOwner ? " is-owner" : "");
+
+			/*
+			 * アバター要素
+			 */
+			const avatarEl = document.createElement("div");
+			avatarEl.className = "log-turn-avatar";
+			avatarEl.style.background = agentColor;
+			avatarEl.textContent = agentInitial;
+
+			/*
+			 * ターンタイトル要素
+			 */
+			const titleEl = document.createElement("div");
+			titleEl.className = "log-turn-title";
+			titleEl.innerHTML = '<span class="log-agent-name">' + Utils.esc(agentName || "") + "</span>" + '<span class="log-turn-timestamp">' + Utils.esc(timestamp || "") + "</span>";
+
+			/*
+			 * ターン本文要素
+			 */
+			const bodyEl = document.createElement("div");
+			bodyEl.className = "log-turn-body md-content streaming";
+
+			/*
+			 * トークン要素
+			 */
+			const tokensEl = document.createElement("div");
+			tokensEl.className = "log-turn-tokens";
+			tokensEl.textContent = "";
+
+			/*
+			 * DOM構築
+			 */
+			turnEl.appendChild(avatarEl);
+			turnEl.appendChild(titleEl);
+			turnEl.appendChild(bodyEl);
+			turnEl.appendChild(tokensEl);
+
+			/*
+			 * DOM追加
+			 */
+			const entriesEl = document.getElementById("log-entries");
+			document.getElementById("log-empty").classList.add("hidden");
+			entriesEl.classList.remove("hidden");
+			entriesEl.appendChild(turnEl);
+
+			/*
+			 * ライブターン情報保持
+			 */
+			this.#liveAgents[agentName] = {
+				turnEl: turnEl, //
+				bodyEl: bodyEl, //
+				tokensEl: tokensEl, //
+				currentRaw: "", //
+				timestamp, //
+			};
+
+			/*
+			 * 自動スクロール
+			 */
+			WebUI.scrollBottom(document.querySelector(".main"));
+		} catch (e) {
+			WebUI.catchFatal(e);
 		}
-		const min = Math.floor(sec / 60);
-		const remSec = sec % 60;
-		return min + "分" + remSec + "秒";
+	}
+
+	/**
+	 * SSE(agent_content)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	#onSseAgentContent(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {
+				agentName, //
+				content, //
+			} = data;
+
+			/*
+			 * ライブターン取得
+			 */
+			const liveAgent = this.#liveAgents[agentName];
+			if (!liveAgent) {
+				return;
+			}
+
+			/*
+			 * ターン本文追記
+			 */
+			liveAgent.currentRaw += content;
+			liveAgent.bodyEl.innerHTML = marked.parse(Utils.filterKeywordLines(liveAgent.currentRaw));
+
+			/*
+			 * 自動スクロール
+			 */
+			WebUI.scrollBottom(document.querySelector(".main"));
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(agent_finish)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	#onSseAgentFinish(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {
+				agentName, //
+				inputTokens, //
+				outputTokens, //
+				elapsedTime, //
+			} = data;
+
+			/*
+			 * ライブターン取得
+			 */
+			const liveAgent = this.#liveAgents[agentName];
+			if (!liveAgent) {
+				return;
+			}
+
+			/*
+			 * ストリーミング解除
+			 */
+			liveAgent.turnEl.classList.remove("is-streaming");
+			liveAgent.bodyEl.classList.remove("streaming");
+
+			/*
+			 * ターン本文確定
+			 */
+			const filtered = Utils.filterKeywordLines(liveAgent.currentRaw);
+			liveAgent.bodyEl.innerHTML = filtered.trim() === "" ? '<em style="color:var(--color-text-muted)">(レスポンスなし)</em>' : marked.parse(filtered);
+
+			/*
+			 * トークン/時間情報
+			 */
+			const elapsedText = elapsedTime ? Utils.formatDurationMs(elapsedTime) : null;
+			liveAgent.tokensEl.textContent = Utils.formatTokenText(agentName, inputTokens, outputTokens) + (elapsedText ? "　" + elapsedText : "");
+
+			/*
+			 * ライブエージェント削除(確定済みターンはloadLog再描画時に静的ターンとして表示される)
+			 */
+			delete this.#liveAgents[agentName];
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(agent_error)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	#onSseAgentError(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {
+				agentName, //
+				message, //
+			} = data;
+
+			/*
+			 * ライブターン取得
+			 */
+			const liveAgent = this.#liveAgents[agentName];
+			if (!liveAgent) {
+				return;
+			}
+
+			/*
+			 * ストリーミング解除
+			 */
+			liveAgent.turnEl.classList.remove("is-streaming");
+			liveAgent.bodyEl.classList.remove("streaming");
+
+			/*
+			 * エラーパネル表示
+			 */
+			if (message) {
+				liveAgent.bodyEl.innerHTML = '<em style="color:var(--color-error)">⚠️ ' + Utils.esc(message) + "</em>";
+			}
+			liveAgent.tokensEl.textContent = "エラー";
+
+			/*
+			 * ライブエージェント削除(確定済みターンはloadLog再描画時に静的ターンとして表示される)
+			 */
+			delete this.#liveAgents[agentName];
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(orchestrator_done/stopped)イベント処理を実行します。<br>
+	 */
+	async #onSseOrchestratorDone(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {} = data;
+
+			/*
+			 * 全ライブターンストリーミング解除
+			 */
+			Object.values(this.#liveAgents).forEach((liveAgent) => {
+				liveAgent.turnEl.classList.remove("is-streaming");
+				liveAgent.bodyEl.classList.remove("streaming");
+			});
+			this.#liveAgents = {};
+
+			/*
+			 * ログ再読み込み
+			 */
+			await this.#loadLog();
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(disconnected)イベント処理を実行します。<br>
+	 */
+	#onSseDisconnected(data) {
+		try {
+			/*
+			 * イベントデータ展開
+			 */
+			const {} = data;
+
+			/*
+			 * 全ライブターンストリーミング解除
+			 */
+			Object.values(this.#liveAgents).forEach((liveAgent) => {
+				liveAgent.turnEl.classList.remove("is-streaming");
+				liveAgent.bodyEl.classList.remove("streaming");
+			});
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
 	}
 }

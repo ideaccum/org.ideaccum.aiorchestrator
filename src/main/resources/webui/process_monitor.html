@@ -20,7 +20,8 @@
 		<link rel="stylesheet" href="css/theme.css" />
 		<link rel="stylesheet" href="css/common.css" />
 		<link rel="stylesheet" href="css/layout.css" />
-		<link rel="stylesheet" href="process_controller.css" />
+		<link rel="stylesheet" href="css/icons.css" />
+		<link rel="stylesheet" href="process_monitor.css" />
 	</head>
 	<body>
 		<!-- ブートオーバーレイ(初期化完了まで表示) -->
@@ -34,7 +35,7 @@
 			<nav class="header-nav">
 				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
 				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project">エージェント</a>
-				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project header-nav-active">コントローラー</a>
+				<a href="/webui/process_monitor.html" class="header-nav-item header-nav-requires-project header-nav-active">コントローラー</a>
 				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
 				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
 			</nav>
@@ -43,35 +44,40 @@
 
 		<!-- ノーティスバー -->
 		<div id="page-notice" class="page-notice">
-			<div id="notice-spinner" class="loading-spinner"></div>
+			<div id="notice-spinner" class="loading-spinner loading-spinner-sm"></div>
 			<span id="notice-text"></span>
 		</div>
 
 		<!-- 切断状態パネル -->
 		<div class="disconnected-panel">
 			<div class="loading-spinner"></div>
-			<span>サーバーとの接続が切断されました<br>再接続を待機しています</span>
+			<span>サーバーとの接続が切断されました<br />再接続を待機しています</span>
 		</div>
 
 		<!-- エラー表示パネル -->
-		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<div id="page-message-error" class="page-message-error hidden"></div>
 		<!-- 警告メッセージパネル -->
-		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<div id="page-message-warn" class="page-message-warn hidden"></div>
 		<!-- 情報メッセージパネル -->
-		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+		<div id="page-message-info" class="page-message-info hidden"></div>
 
+		<!-- ページヘッダー -->
+		<!--
+		<div class="content-header">
+			<span class="content-title"></span>
+		</div>
+		-->
 
 		<!-- メインコンテンツ -->
 		<div class="main scrollbar-thin">
-			<!-- オーナーカード(全幅) -->
-			<div id="owner-card" class="card owner-card" style="display: none">
+			<!-- オーナーカード -->
+			<div id="owner-card" class="card owner-card hidden">
 				<div class="card-header">
 					<div class="card-avatar owner-avatar">O</div>
 					<span class="agent-name">Owner</span>
-					<span class="owner-label">オーナー</span>
 					<div class="owner-card-actions">
 						<button id="owner-start-btn" class="btn btn-run">実行</button>
-						<button id="owner-stop-btn" class="btn owner-stop-btn" style="display: none">停止</button>
+						<button id="owner-stop-btn" class="btn owner-stop-btn hidden">停止</button>
 					</div>
 				</div>
 				<!-- 発言履歴エリア -->
@@ -81,32 +87,40 @@
 				<!-- プロンプト入力エリア -->
 				<div class="owner-card-input">
 					<div class="owner-preset-row">
-						<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:var(--opacity-active)"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7 1H9l-.7-1A7 7 0 0 1 12 2z"/></svg>
+						<span class="icon icon-hint owner-preset-hint"></span>
 						<button id="owner-preset-check" class="btn btn-preset" type="button">エージェント存在確認</button>
 						<button id="owner-preset-summary" class="btn btn-preset" type="button">過去会話のサマリー</button>
 						<button id="owner-preset-next" class="btn btn-preset" type="button">推奨される次の指示</button>
+						<button id="owner-preset-discussion-auto-pilot" class="btn btn-preset" type="button">自動運転トロッコ議論</button>
 					</div>
 					<textarea id="owner-prompt-input" class="owner-prompt-textarea scrollbar-thin" placeholder="タスクプロンプトを入力してください..."></textarea>
 				</div>
 			</div>
 			<!-- エージェントカードグリッド -->
-			<div id="agents-grid" style="display: none"></div>
+			<div id="agents-grid" class="hidden">
+				<!-- スクリプト側で動的出力 -->
+			</div>
 		</div>
 
 		<!-- ページスクリプト -->
 		<script src="lib/marked/marked-12.0.2.min.js"></script>
 		<script src="js/constants.js"></script>
 		<script src="js/utils.js"></script>
+		<script src="js/webui.js"></script>
 		<script src="js/webapi.js"></script>
-		<script src="js/content.js"></script>
-		<script src="js/header.js"></script>
-		<script src="process_controller.js"></script>
+		<script src="js/webctrl.js"></script>
+		<script src="js/page.js"></script>
+		<script src="process_monitor.js"></script>
 		<script>
-			Promise.all([
-				new ContentController().init(),
-				new HeaderController().init(),
-				new ProcessController().init(),
-			]).finally(() => Utils.hideBootOverlay());
+			Utils.init().then(() => {
+				WebUI.init();
+				return Promise.all([
+					new PageController().init(), //
+					new ProcessMonitorController().init(), //
+				]).finally(() => {
+					WebUI.hideOverlay();
+				});
+			});
 		</script>
 	</body>
 </html>

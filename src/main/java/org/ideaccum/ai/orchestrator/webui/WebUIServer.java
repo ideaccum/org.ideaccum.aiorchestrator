@@ -1,8 +1,8 @@
 package org.ideaccum.ai.orchestrator.webui;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -30,7 +30,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.lang3.exception.UncheckedException;
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.AgentConfig;
 import org.ideaccum.ai.orchestrator.agent.AgentType;
@@ -68,10 +70,10 @@ import tools.jackson.databind.JsonNode;
  * 2026/04/30	Kitagawa		新規作成
  *-->
  */
-public class AgentWebUIServer implements Constants {
+public class WebUIServer implements Constants {
 
 	/** ロガーオブジェクト */
-	private static final Logger log = LoggerFactory.getLogger(AgentWebUIServer.class);
+	private static final Logger log = LoggerFactory.getLogger(WebUIServer.class);
 
 	/** 環境設定オブジェクト */
 	private Config config;
@@ -94,11 +96,14 @@ public class AgentWebUIServer implements Constants {
 	/** 停止シグナルフューチャーオブジェクト */
 	private volatile CompletableFuture<Void> stopSignalFuture;
 
+	/** バックグラウンドプロセス(複写・削除など非同期処理の進捗管理) */
+	private volatile WebUIProcess currentBackgroundProcess;
+
 	/**
 	 * コンストラクタ<br>
 	 * @param config 環境設定オブジェクト
 	 */
-	public AgentWebUIServer(Config config) {
+	public WebUIServer(Config config) {
 		this.config = config;
 		this.address = null;
 		this.server = null;
@@ -172,40 +177,23 @@ public class AgentWebUIServer implements Constants {
 	 * APIレスポンスをJSON形式で送信します。<br>
 	 * @param exchange リクエストレスポンス情報
 	 * @param apiResponse APIレスポンスオブジェクト
-	 * @throws IOException レスポンス送信に失敗した場合にスローされます
 	 */
-	private void sendApiResponse(HttpExchange exchange, AgentWebUIApiResponse apiResponse) throws IOException {
+	private void sendApiResponse(HttpExchange exchange, WebUIApiResponse apiResponse) {
 		byte[] responseBytes = MAPPER.writeValueAsBytes(apiResponse);
 		exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
 		exchange.getResponseHeaders().set("Connection", "close");
-		exchange.sendResponseHeaders(200, responseBytes.length);
+		try {
+			exchange.sendResponseHeaders(HTTP_STATUS_OK, responseBytes.length);
+		} catch (IOException e) {
+			// ステータスコードレスポンス例外は無視
+			//log.error("APIレスポンス時のステータス設定例外が発生しました。", e);
+		}
 		try (OutputStream os = exchange.getResponseBody()) {
 			os.write(responseBytes);
 		} catch (IOException e) {
-			// レスポンスcloseの例外は無視
+			// レスポンスストリーム例外は無視(クライアントクローズの場合に必ず発生するため)
+			//log.error("APIレスポンス時のストリーム出力で例外が発生しました。", e);
 		}
-	}
-
-	/**
-	 * エージェント指示行を除いたコンテンツを提供します。<br>
-	 * @param content コンテンツ内容
-	 * @return エージェント指示行を除いたコンテンツ内容
-	 */
-	private String removeIstructLine(String content) {
-		StringBuilder builder = new StringBuilder();
-		content.lines().forEach(line -> {
-			if (AGENT_FINALIZE_KEYWORD.equals(line)) {
-				return;
-			}
-			if (AGENT_INTERRRUPTE_KEYWORD.equals(line)) {
-				return;
-			}
-			if (AGENT_DISPATH_REGEXP.matcher(line).find()) {
-				return;
-			}
-			builder.append(line).append("\n");
-		});
-		return builder.toString();
 	}
 
 	/**
@@ -220,7 +208,7 @@ public class AgentWebUIServer implements Constants {
 				// コンテキストルートはインタフェースルートにリダイレクト
 				exchange.getResponseHeaders().set("Connection", "close");
 				exchange.getResponseHeaders().set("Location", WEBUI_ROOT_URL);
-				exchange.sendResponseHeaders(302, -1);
+				exchange.sendResponseHeaders(HTTP_STATUS_REDIRECT, -1);
 			} else if (requestPath.startsWith(WEBUI_ROOT_URL)) {
 				if (WEBUI_ROOT_URL.equals(requestPath)) {
 					// インタフェースルートリクエスト
@@ -283,20 +271,36 @@ public class AgentWebUIServer implements Constants {
 			} else if (API_GET_DEFAULT_PROJECT.equals(requestPath)) {
 				// API:プロジェクトデフォルト値取得
 				apiGetDefaultProject(exchange);
+			} else if (API_CLEAR_SESSION.equals(requestPath)) {
+				// API:セッションクリア
+				apiClearSession(exchange);
+			} else if (API_GET_CONTROL_KEYWORDS.equals(requestPath)) {
+				// API:制御キーワード取得
+				apiGetControlKeywords(exchange);
+			} else if (API_DOWNLOAD_LOGS.equals(requestPath)) {
+				// API:ログダウンロード
+				apiDownloadLogs(exchange);
+			} else if (API_CANCEL_PROCESS.equals(requestPath)) {
+				// API:バックグラウンドプロセスキャンセル
+				apiCancelProcess(exchange);
+			} else if (API_GET_PROCESS_STATUS.equals(requestPath)) {
+				// API:バックグラウンドプロセスステータス取得
+				apiGetProcessStatus(exchange);
 			} else {
-				exchange.sendResponseHeaders(403, -1);
+				exchange.sendResponseHeaders(HTTP_STATUS_FORBIDDEN, -1);
 			}
 		} catch (Throwable e) {
 			log.error("リクエスト処理でエラーが発生しました。", e);
+			sendApiResponse(exchange, WebUIApiResponse.error("サーバー内部で予期せぬエラーが発生しました。\n詳細はサーバーログに出力されています。"));
 		}
 	}
 
 	/**
 	 * インタフェースルートリクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void requestWebuiRoot(HttpExchange exchange) throws IOException {
+	private void requestWebuiRoot(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -309,15 +313,15 @@ public class AgentWebUIServer implements Constants {
 		String redirectPath = isProjectSelected() ? WEBUI_PROCESS_CONTROLLER_PAGE : WEBUI_PROJECT_SETTING_PAGE;
 		exchange.getResponseHeaders().set("Connection", "close");
 		exchange.getResponseHeaders().set("Location", redirectPath);
-		exchange.sendResponseHeaders(302, -1);
+		exchange.sendResponseHeaders(HTTP_STATUS_REDIRECT, -1);
 	}
 
 	/**
 	 * インタフェーステーマリソースリクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void requestWebuiTheme(HttpExchange exchange) throws IOException {
+	private void requestWebuiTheme(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -342,22 +346,25 @@ public class AgentWebUIServer implements Constants {
 		exchange.getResponseHeaders().set("Content-Type", contentType);
 		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
 		exchange.getResponseHeaders().set("Connection", "close");
-		exchange.sendResponseHeaders(200, resourceData.length);
+		exchange.sendResponseHeaders(HTTP_STATUS_OK, resourceData.length);
 
 		/*
 		 * レスポンス出力
 		 */
 		try (OutputStream os = exchange.getResponseBody()) {
 			os.write(resourceData);
+		} catch (IOException e) {
+			// レスポンスストリーム例外は無視(クライアントクローズの場合に必ず発生するため)
+			//log.error("UIテーマリソースレスポンス時のストリーム出力で例外が発生しました。", e);
 		}
 	}
 
 	/**
 	 * インタフェースリソースリクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void requestWebui(HttpExchange exchange) throws IOException {
+	private void requestWebui(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -373,7 +380,7 @@ public class AgentWebUIServer implements Constants {
 		) {
 			exchange.getResponseHeaders().set("Connection", "close");
 			exchange.getResponseHeaders().set("Location", WEBUI_PROJECT_SETTING_PAGE);
-			exchange.sendResponseHeaders(302, -1);
+			exchange.sendResponseHeaders(HTTP_STATUS_REDIRECT, -1);
 			return;
 		}
 
@@ -395,22 +402,25 @@ public class AgentWebUIServer implements Constants {
 		exchange.getResponseHeaders().set("Content-Type", contentType);
 		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
 		exchange.getResponseHeaders().set("Connection", "close");
-		exchange.sendResponseHeaders(200, resourceData.length);
+		exchange.sendResponseHeaders(HTTP_STATUS_OK, resourceData.length);
 
 		/*
 		 * レスポンス出力
 		 */
 		try (OutputStream os = exchange.getResponseBody()) {
 			os.write(resourceData);
+		} catch (IOException e) {
+			// レスポンスストリーム例外は無視(クライアントクローズの場合に必ず発生するため)
+			//log.error("UIリソースレスポンス時のストリーム出力で例外が発生しました。", e);
 		}
 	}
 
 	/**
 	 * SSE接続リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void sseConnect(HttpExchange exchange) throws IOException {
+	private void sseConnect(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -424,7 +434,7 @@ public class AgentWebUIServer implements Constants {
 		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
 		exchange.getResponseHeaders().set("Connection", "close");
 		exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-		exchange.sendResponseHeaders(200, 0);
+		exchange.sendResponseHeaders(HTTP_STATUS_OK, 0);
 
 		/*
 		 * 出力ストリーム取得
@@ -439,13 +449,13 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * 再接続時のバッファ済みイベントをキューに先行投入
 		 */
-		AgentWebUIEventController.instance().getEventBuffer().forEach(queue::offer);
+		WebUIController.instance().getEventBuffer().forEach(queue::offer);
 
 		/*
 		 * エージェントイベントキューイングオブジェクト登録
 		 */
 		Consumer<String> subscriber = queue::offer;
-		AgentWebUIEventController.instance().subscribe(subscriber);
+		WebUIController.instance().subscribe(subscriber);
 
 		/*
 		 * レスポンス出力
@@ -463,28 +473,35 @@ public class AgentWebUIServer implements Constants {
 				os.flush();
 			}
 		} catch (IOException e) {
-			// クライアント切断(正常終了として無視)
+			// SSE入出力例外は無視(クライアントクローズの場合に必ず発生するため)
+			//log.error("SSE入出力処理で例外が発生しました。", e);
 		} catch (InterruptedException e) {
+			// SSE停止スレッド例外は無視(内部処理の停止スレッドであるためスレッド割り込みにそのまま委譲)
+			//log.error("SSE処理停止スレッドで例外が発生しました。", e);
 			Thread.currentThread().interrupt();
 		} finally {
-			AgentWebUIEventController.instance().unsubscribe(subscriber);
+			WebUIController.instance().unsubscribe(subscriber);
 			try {
 				os.close();
-			} catch (IOException e) {
-				// ストリームクローズに関しての例外は無視
+			} catch (Throwable e) {
+				// SSE接続クローズに関しての例外は無視
+				//log.error("SSE接続クローズで例外が発生しました。", e);
 			}
 		}
 	}
 
 	/**
 	 * 現在選択中のプロジェクトのリーダーエージェント数を返却します。<br>
+	 * @param exchange リクエストレスポンス情報
 	 * @param projectName プロジェクト名
 	 * @return リーダーエージェント数
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private int countLeaderAgents(String projectName) {
+	private int countLeaderAgents(HttpExchange exchange, String projectName) throws Throwable {
 		Path agentsPath = config.getApplicationAgentsPath(projectName);
 		if (!Files.isDirectory(agentsPath)) {
-			return 0;
+			log.error("指定されたエージェントパスがディレクトリではありません(" + agentsPath + ")。\nプロジェクト配下のエージェントパスを確認してください。");
+			sendApiResponse(exchange, WebUIApiResponse.error("指定されたエージェントパスがディレクトリではありません(" + agentsPath + ")。\nプロジェクト配下のエージェントパスを確認してください。"));
 		}
 		try (Stream<Path> stream = Files.list(agentsPath)) {
 			return (int) stream //
@@ -493,23 +510,23 @@ public class AgentWebUIServer implements Constants {
 						Properties properties = new Properties();
 						try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8)) {
 							properties.load(reader);
-						} catch (IOException e) {
-							return false;
+						} catch (Throwable e) {
+							throw new UncheckedException(e);
 						}
 						return Boolean.parseBoolean(properties.getProperty("agent.leader", "false"));
 					}) //
 					.count();
-		} catch (IOException e) {
-			return 0;
+		} catch (Throwable e) {
+			throw e;
 		}
 	}
 
 	/**
 	 * プロジェクト選択受付リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiSelectProject(HttpExchange exchange) throws IOException {
+	private void apiSelectProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -527,36 +544,49 @@ public class AgentWebUIServer implements Constants {
 		 */
 		String projectName = request.path("projectName").asString("");
 		if (isOrchestratorRunning()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("オーケストレーター実行中はプロジェクトを変更できません。"));
-			return;
-		}
-		try {
-			context = new ContextFactory(config).create(projectName);
-			AgentWebUIEventController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
-		} catch (Throwable e) {
-			log.error("コンテキストオブジェクトの生成に失敗しました。", e);
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("処理コンテキストの生成に失敗しました。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("オーケストレーター実行中はプロジェクトを変更できません。"));
 			return;
 		}
 
 		/*
-		 * レスポンスデータ生成
+		 * 処理コンテキスト生成(バックグラウンドで非同期実行)
 		 */
-		Map<String, String> result = new LinkedHashMap<>();
-		result.put("project", projectName);
+		final String finalProjectName = projectName;
+
+		WebUIProcess process = new WebUIProcess(false);
+		currentBackgroundProcess = process;
+
+		new Thread(() -> {
+			try {
+				context = new ContextFactory(config).create(finalProjectName);
+				WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("project", finalProjectName);
+				process.setResult(res);
+				process.setStatus(WebUIProcess.STATUS_DONE);
+				log.debug("プロジェクトを選択しました({})。", finalProjectName);
+			} catch (Throwable e) {
+				log.error("プロジェクトの選択に失敗しました({})。", finalProjectName, e);
+				context = null;
+				process.setMessage("プロジェクトの選択に失敗しました。");
+				process.setStatus(WebUIProcess.STATUS_ERROR);
+			}
+		}, "background-select-process").start();
 
 		/*
-		 * レスポンス返却
+		 * 非同期プロセス開始を即時返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		Map<String, Object> asyncResult = new LinkedHashMap<>();
+		asyncResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
 	}
 
 	/**
 	 * オーケストレーター処理開始リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiStartOrchestrator(HttpExchange exchange) throws IOException {
+	private void apiStartOrchestrator(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -574,21 +604,21 @@ public class AgentWebUIServer implements Constants {
 		 * バリデーションチェック
 		 */
 		String prompt = request.path("prompt").asString("");
-		int leaderCount = countLeaderAgents(context.getProjectName());
+		int leaderCount = countLeaderAgents(exchange, context.getProjectName());
 		if (prompt.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロンプトを入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("実行するタスクプロンプトを入力してください。"));
 			return;
 		}
 		if (!isProjectSelected() || isOrchestratorRunning()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("オーケストレーターの処理を開始できるステータスにありません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("オーケストレーターの処理を開始できるステータスにありません。"));
 			return;
 		}
 		if (leaderCount == 0) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("リーダーエージェントが設定されていないため処理を開始できません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("リーダーエージェントが設定されていないため処理を開始できません。"));
 			return;
 		}
 		if (leaderCount > 1) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("リーダーエージェントが複数設定されているため処理を開始できません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("リーダーエージェントが複数設定されているため処理を開始できません。"));
 			return;
 		}
 
@@ -600,11 +630,11 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * オーナー会話エントリ追加 + SSEイベント発行
 		 */
-		String ownerTimestamp = DEFAULT_DATE_FORMAT.format(new Date());
+		String ownerTimestamp = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date());
 		context.getConversations().add(OWNER_AGENT_NAME, prompt, null);
-		AgentWebUIEventController.instance().publishStart(OWNER_AGENT_NAME, null, ownerTimestamp);
-		AgentWebUIEventController.instance().publishContent(OWNER_AGENT_NAME, prompt);
-		AgentWebUIEventController.instance().publishFinish(OWNER_AGENT_NAME);
+		WebUIController.instance().publishStart(OWNER_AGENT_NAME, null, ownerTimestamp);
+		WebUIController.instance().publishContent(OWNER_AGENT_NAME, prompt);
+		WebUIController.instance().publishFinish(OWNER_AGENT_NAME);
 
 		/*
 		 * 停止シグナル初期化
@@ -617,10 +647,11 @@ public class AgentWebUIServer implements Constants {
 		Orchestrator orchestrator = new Orchestrator(context, this::isStopRequested);
 		orchestratorExecuteFuture = orchestratorExecutor.submit(() -> {
 			try {
-				AgentWebUIEventController.instance().publishOrchestratorStarted();
+				WebUIController.instance().publishOrchestratorStarted();
 				orchestrator.execute();
 			} catch (Throwable e) {
 				log.error("オーケストレーター実行に失敗しました。", e);
+				sendApiResponse(exchange, WebUIApiResponse.error("オーケストレーターの実行に失敗しました。\n詳細はサーバーログを確認してください。"));
 			}
 		});
 
@@ -632,15 +663,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * オーケストレーター処理停止リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiStopOrchestrator(HttpExchange exchange) throws IOException {
+	private void apiStopOrchestrator(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -658,7 +689,7 @@ public class AgentWebUIServer implements Constants {
 		 * バリデーションチェック
 		 */
 		if (!isOrchestratorRunning()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("オーケストレーターの処理を停止できるステータスにありません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("オーケストレーターの処理を停止できるステータスにありません。"));
 			return;
 		}
 
@@ -670,7 +701,7 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * SSEイベント発行
 		 */
-		AgentWebUIEventController.instance().publishOrchestratorStopped();
+		WebUIController.instance().publishOrchestratorStopped();
 
 		/*
 		 * レスポンスデータ生成
@@ -680,15 +711,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * オーケストレーターステータス取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetOrchestratorStatus(HttpExchange exchange) throws IOException {
+	private void apiGetOrchestratorStatus(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -715,7 +746,7 @@ public class AgentWebUIServer implements Constants {
 		boolean running = isOrchestratorRunning();
 		boolean done = isOrchestratorCompleted();
 		boolean waitingStart = isProjectSelected() && !isOrchestratorRunning() && !isOrchestratorCompleted();
-		int leaderCount = isProjectSelected() ? countLeaderAgents(context.getProjectName()) : 0;
+		int leaderCount = isProjectSelected() ? countLeaderAgents(exchange, context.getProjectName()) : 0;
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("projectSelected", projectSelected);
 		result.put("projectName", projectName);
@@ -727,15 +758,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * カレントプロジェクト取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetCurrentProject(HttpExchange exchange) throws IOException {
+	private void apiGetCurrentProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -752,29 +783,26 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * バリデーションチェック
 		 */
-		if (!isProjectSelected()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトが選択されていません。"));
-			return;
-		}
+		// なし
 
 		/*
 		 * レスポンスデータ生成
 		 */
 		Map<String, String> result = new LinkedHashMap<>();
-		result.put("project", context.getProjectName());
+		result.put("project", isProjectSelected() ? context.getProjectName() : null);
 
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * プロジェクト情報取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetProject(HttpExchange exchange) throws IOException {
+	private void apiGetProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -793,11 +821,11 @@ public class AgentWebUIServer implements Constants {
 		 */
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト名が指定されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名が指定されていません。"));
 			return;
 		}
 		if (!Files.isReadable(config.getApplicationProjectPropertiesPath(projectName))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト設定ファイルが読み込めません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト設定ファイルが読み込めません。"));
 			return;
 		}
 
@@ -812,19 +840,21 @@ public class AgentWebUIServer implements Constants {
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("name", projectConfig.getName());
 		result.put("title", projectConfig.getTitle());
+		result.put("externalEnabled", projectConfig.isExternalEnabled());
+		result.put("externalPath", projectConfig.getExternalPath() != null ? projectConfig.getExternalPath() : "");
 
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * プロジェクト情報保存リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiSaveProject(HttpExchange exchange) throws IOException {
+	private void apiSaveProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -847,72 +877,78 @@ public class AgentWebUIServer implements Constants {
 		String copyFromProject = request.path("copyFromProject").asString("");
 		String agentTemplate = request.path("agentTemplate").asString("");
 		String title = request.path("title").asString("");
+		boolean externalEnabled = request.path("externalEnabled").asBoolean(false);
+		String externalPath = request.path("externalPath").asString("");
 		boolean isRename = !originalProject.isBlank() && !originalProject.equals(projectName);
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト名を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名を入力してください。"));
 			return;
 		}
-		if (!projectName.matches("[a-zA-Z0-9]+")) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト名は半角英数字のみ使用できます。"));
+		if (!projectName.matches(ALPHANUMERIC_REGEX)) {
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名は半角英数字のみ使用できます。"));
 			return;
 		}
-		if (projectName.length() > 32) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト名は32文字以内で入力してください。"));
+		if (projectName.length() > MAX_PROJECT_NAME_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名は" + MAX_PROJECT_NAME_LENGTH + "文字以内で入力してください。"));
 			return;
 		}
-		if (isNew && Files.exists(config.getApplicationProjectPath(projectName))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("同名のプロジェクトが既に存在します。"));
+		if ((isNew || isRename) && Files.exists(config.getApplicationProjectPath(projectName))) {
+			sendApiResponse(exchange, WebUIApiResponse.error("同名のプロジェクトリソースが既に存在します。"));
 			return;
 		}
 		if (isRename && !Files.exists(config.getApplicationProjectPath(originalProject))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("変更元のプロジェクトが見つかりません。"));
-			return;
-		}
-		if (isRename && Files.exists(config.getApplicationProjectPath(projectName))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("同名のプロジェクトが既に存在します。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("変更元のプロジェクトが見つかりません。"));
 			return;
 		}
 		if (title.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトタイトルを入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトタイトルを入力してください。"));
 			return;
 		}
-		if (title.length() > 80) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトタイトルは80文字以内で入力してください。"));
+		if (title.length() > MAX_PROJECT_TITLE_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトタイトルは" + MAX_PROJECT_TITLE_LENGTH + "文字以内で入力してください。"));
+			return;
+		}
+		if (externalEnabled && externalPath.isBlank()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("外部パスを使用する場合はパスを入力してください。"));
 			return;
 		}
 
 		/*
-		 * プロジェクトディレクトリ作成(リネーム時はディレクトリ移動)
+		 * プロジェクトディレクトリ作成・リネーム(入出力例外などはアプリケーションエラーとしてハンドリング)
 		 */
 		boolean isNewProject = !isRename && !Files.exists(config.getApplicationProjectPath(projectName));
 		if (isRename) {
-			Files.move(config.getApplicationProjectPath(originalProject), config.getApplicationProjectPath(projectName));
+			try {
+				Files.move(config.getApplicationProjectPath(originalProject), config.getApplicationProjectPath(projectName));
+			} catch (Throwable e) {
+				log.error("プロジェクトディレクトリのリネームに失敗しました({} -> {})。", originalProject, projectName, e);
+				sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトのリネームに失敗しました。\nファイルが使用中の可能性があります。"));
+				return;
+			}
 			if (isProjectSelected() && originalProject.equals(context.getProjectName())) {
 				try {
 					context = new ContextFactory(config).create(projectName);
-					AgentWebUIEventController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+					WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
 				} catch (Throwable e) {
-					log.warn("リネーム後のコンテキスト再構築に失敗しました。", e);
+					log.error("リネーム後のコンテキスト再構築に失敗しました。", e);
 					context = null;
+					throw e;
 				}
 			}
-			log.info("プロジェクトディレクトリをリネームしました({} -> {})。", originalProject, projectName);
+			log.debug("プロジェクトディレクトリをリネームしました({} -> {})。", originalProject, projectName);
 		}
 		Files.createDirectories(config.getApplicationProjectPath(projectName));
 		Files.createDirectories(config.getApplicationLogPath(projectName));
+		Files.createDirectories(config.getApplicationMemoryPath(projectName));
 		Files.createDirectories(config.getApplicationAgentsPath(projectName));
 
 		/*
-		 * 新規プロジェクト時はテンプレートリソースをプロジェクトディレクトリへ配置
-		 * (複写時はテンプレート配置をスキップ)
+		 * 新規プロジェクト時はテンプレートリソースをプロジェクトディレクトリへ配置(複写時はテンプレート配置をスキップ)
 		 */
 		if (isNewProject && copyFromProject.isBlank()) {
-			try {
-				ResourceUtils.copyResourceDirectory(RESOURCE_TEMPLATE_PROJECT, config.getApplicationProjectPath(projectName));
-				log.info("プロジェクトテンプレートを配置しました({})。", config.getApplicationProjectPath(projectName));
-			} catch (Throwable e) {
-				log.warn("プロジェクトテンプレートの配置に失敗しました。", e);
-			}
+			ResourceUtils.copyResourceDirectory(RESOURCE_TEMPLATE_PROJECT, config.getApplicationProjectPath(projectName));
+			log.debug("プロジェクトテンプレートを配置しました({})。", config.getApplicationProjectPath(projectName));
+
 			String templateAgentsResource = null;
 			if ("fullstack".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_FULLSTACK;
@@ -924,71 +960,150 @@ public class AgentWebUIServer implements Constants {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_CODEX;
 			} else if ("light_gemini".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_GEMINI;
+			} else if ("discussion".equals(agentTemplate)) {
+				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_DISCUSSION;
+			} else if ("programming".equals(agentTemplate)) {
+				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_PROGRAMMING;
 			}
 			if (templateAgentsResource != null) {
-				try {
-					ResourceUtils.copyResourceDirectory(templateAgentsResource, config.getApplicationAgentsPath(projectName));
-					log.info("エージェントテンプレートを配置しました({} -> {})。", templateAgentsResource, config.getApplicationAgentsPath(projectName));
-				} catch (Throwable e) {
-					log.warn("エージェントテンプレートの配置に失敗しました。", e);
-				}
+				ResourceUtils.copyResourceDirectory(templateAgentsResource, config.getApplicationAgentsPath(projectName));
+				log.debug("エージェントテンプレートを配置しました({} -> {})。", templateAgentsResource, config.getApplicationAgentsPath(projectName));
 			}
 		}
 
 		/*
-		 * 複写時はコピー元プロジェクトをディレクトリツリーごとコピー
+		 * 複写時はコピー元プロジェクトをバックグラウンドスレッドで非同期コピー(キャンセル対応)
 		 * (.orchestrator配下はagentsディレクトリのみコピー)
 		 */
 		if (isNewProject && !copyFromProject.isBlank()) {
-			Path sourcePath = config.getApplicationProjectPath(copyFromProject);
-			Path destPath = config.getApplicationProjectPath(projectName);
-			Path sourceAgentsPath = config.getApplicationAgentsPath(copyFromProject);
-			Path sourceOrchestratorPath = sourceAgentsPath.getParent();
-			if (Files.isDirectory(sourcePath)) {
-				try (Stream<Path> walk = Files.walk(sourcePath)) {
-					for (Path src : walk.collect(Collectors.toList())) {
-						// .orchestrator配下はagentsのみ(.orchestratorディレクトリ自体は通過)
-						if (src.startsWith(sourceOrchestratorPath) && !src.equals(sourceOrchestratorPath) && !src.startsWith(sourceAgentsPath)) {
-							continue;
+			final String finalProjectName = projectName;
+			final String finalCopyFromProject = copyFromProject;
+			final String finalTitle = title;
+			final boolean finalExternalEnabled = externalEnabled;
+			final String finalExternalPath = externalPath;
+			final Path sourcePath = config.getApplicationProjectPath(copyFromProject);
+			final Path destPath = config.getApplicationProjectPath(projectName);
+			final Path sourceAgentsPath = config.getApplicationAgentsPath(copyFromProject);
+			final Path sourceOrchestratorPath = sourceAgentsPath.getParent();
+
+			WebUIProcess task = new WebUIProcess(true);
+			currentBackgroundProcess = task;
+
+			new Thread(() -> {
+				try {
+					if (Files.isDirectory(sourcePath)) {
+						List<Path> paths;
+						try (Stream<Path> walk = Files.walk(sourcePath)) {
+							paths = walk.collect(Collectors.toList());
 						}
-						Path dest = destPath.resolve(sourcePath.relativize(src));
-						if (Files.isDirectory(src)) {
-							Files.createDirectories(dest);
-						} else {
-							Files.createDirectories(dest.getParent());
-							Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+						for (Path src : paths) {
+							if (task.isCancelled()) {
+								break;
+							}
+							if (src.startsWith(sourceOrchestratorPath) && !src.equals(sourceOrchestratorPath) && !src.startsWith(sourceAgentsPath)) {
+								continue;
+							}
+							Path dest = destPath.resolve(sourcePath.relativize(src));
+							if (Files.isDirectory(src)) {
+								Files.createDirectories(dest);
+							} else {
+								Files.createDirectories(dest.getParent());
+								Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+							}
 						}
 					}
+
+					if (task.isCancelled()) {
+						// 複写先ディレクトリを削除してキャンセル状態に設定
+						if (Files.exists(destPath)) {
+							try (Stream<Path> walk = Files.walk(destPath)) {
+								walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+									try {
+										Files.delete(p);
+									} catch (IOException ignored) {
+									}
+								});
+							}
+						}
+						log.debug("プロジェクトの複写を中断しました({} -> {})。", finalCopyFromProject, finalProjectName);
+						task.setMessage("複写を中断しました。");
+						task.setStatus(WebUIProcess.STATUS_CANCELLED);
+					} else {
+						// プロジェクトプロパティ保存
+						ProjectConfig pc = new ProjectConfig(config.getApplicationProjectPropertiesPath(finalProjectName));
+						pc.setName(finalProjectName);
+						pc.setTitle(finalTitle);
+						pc.setExternalEnabled(finalExternalEnabled);
+						pc.setExternalPath(finalExternalPath);
+						pc.save(config.getApplicationProjectPropertiesPath(finalProjectName));
+						log.debug("プロジェクトを複写しました({} -> {})。", finalCopyFromProject, finalProjectName);
+						Map<String, Object> res = new LinkedHashMap<>();
+						res.put("savedName", finalProjectName);
+						task.setResult(res);
+						task.setStatus(WebUIProcess.STATUS_DONE);
+					}
+				} catch (Throwable e) {
+					log.warn("プロジェクトの複写に失敗しました({} -> {})。", finalCopyFromProject, finalProjectName, e);
+					task.setMessage("プロジェクトの複写に失敗しました。ファイルが使用中の可能性があります。");
+					task.setStatus(WebUIProcess.STATUS_ERROR);
 				}
-				log.info("プロジェクトを複写しました({} -> {})。", copyFromProject, projectName);
-			}
+			}, "background-copy-process").start();
+
+			/*
+			 * 非同期タスク開始を即時返却
+			 */
+			Map<String, Object> asyncResult = new LinkedHashMap<>();
+			asyncResult.put("isAsync", true);
+			sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
+			return;
 		}
 
 		/*
-		 * プロジェクトプロパティ保存
+		 * プロジェクトプロパティ保存(複写以外の通常保存・バックグラウンドで非同期実行)
 		 */
-		ProjectConfig projectConfig = new ProjectConfig(config.getApplicationProjectPropertiesPath(projectName));
-		projectConfig.setName(projectName);
-		projectConfig.setTitle(title);
-		projectConfig.save(config.getApplicationProjectPropertiesPath(projectName));
+		final String finalProjectName = projectName;
+		final String finalTitle = title;
+		final boolean finalExternalEnabled = externalEnabled;
+		final String finalExternalPath = externalPath;
+
+		WebUIProcess process = new WebUIProcess(false);
+		currentBackgroundProcess = process;
+
+		new Thread(() -> {
+			try {
+				ProjectConfig pc = new ProjectConfig(config.getApplicationProjectPropertiesPath(finalProjectName));
+				pc.setName(finalProjectName);
+				pc.setTitle(finalTitle);
+				pc.setExternalEnabled(finalExternalEnabled);
+				pc.setExternalPath(finalExternalPath);
+				pc.save(config.getApplicationProjectPropertiesPath(finalProjectName));
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("savedName", finalProjectName);
+				res.put("message", "プロジェクトを登録しました。");
+				process.setResult(res);
+				process.setStatus(WebUIProcess.STATUS_DONE);
+				log.debug("プロジェクトを登録しました({})。", finalProjectName);
+			} catch (Throwable e) {
+				log.error("プロジェクトの保存に失敗しました({})。", finalProjectName, e);
+				process.setMessage("プロジェクトの保存に失敗しました。");
+				process.setStatus(WebUIProcess.STATUS_ERROR);
+			}
+		}, "background-save-process").start();
 
 		/*
-		 * レスポンスデータ生成
+		 * 非同期プロセス開始を即時返却
 		 */
-		Map<String, String> result = new LinkedHashMap<>();
-
-		/*
-		 * レスポンス返却
-		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result, "プロジェクトを登録しました。"));
+		Map<String, Object> asyncResult = new LinkedHashMap<>();
+		asyncResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
 	}
 
 	/**
 	 * プロジェクト一覧取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetProjectList(HttpExchange exchange) throws IOException {
+	private void apiGetProjectList(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1000,7 +1115,6 @@ public class AgentWebUIServer implements Constants {
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
 		JsonNode request = MAPPER.readTree(requestBytes);
-		log.trace("リクエスト情報 : " + request.toString());
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1017,6 +1131,8 @@ public class AgentWebUIServer implements Constants {
 			Map<String, Object> project = new LinkedHashMap<>();
 			project.put("name", projectName);
 			project.put("title", projectConfig.getTitle());
+			project.put("externalEnabled", projectConfig.isExternalEnabled());
+			project.put("externalPath", projectConfig.getExternalPath() != null ? projectConfig.getExternalPath() : "");
 
 			Path convFile = config.getAgentConversationLogfile(projectName);
 			boolean hasConversations = false;
@@ -1030,7 +1146,6 @@ public class AgentWebUIServer implements Constants {
 					JsonNode entriesNode = convNode.isArray() ? convNode : convNode.path("entries");
 					if (entriesNode.isArray() && !entriesNode.isEmpty()) {
 						hasConversations = true;
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 						String firstTimestamp = null;
 						String lastTimestamp = null;
 						for (JsonNode entry : entriesNode) {
@@ -1052,8 +1167,8 @@ public class AgentWebUIServer implements Constants {
 						}
 						if (firstTimestamp != null && lastTimestamp != null && !firstTimestamp.equals(lastTimestamp)) {
 							try {
-								long first = sdf.parse(firstTimestamp).getTime();
-								long last = sdf.parse(lastTimestamp).getTime();
+								long first = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(firstTimestamp).getTime();
+								long last = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(lastTimestamp).getTime();
 								durationSec = (last - first) / 1000;
 							} catch (Throwable ignored) {
 							}
@@ -1103,15 +1218,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * エージェント一覧取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetAgentList(HttpExchange exchange) throws IOException {
+	private void apiGetAgentList(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1130,7 +1245,7 @@ public class AgentWebUIServer implements Constants {
 		 */
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトが選択されていません。。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
 		}
 
@@ -1153,9 +1268,8 @@ public class AgentWebUIServer implements Constants {
 					}
 					String agentName = properties.getProperty("agent.name", "");
 					Map<String, Object> agent = new LinkedHashMap<>();
-					agent.put("filename", file.getFileName().toString());
 					agent.put("name", agentName);
-					agent.put("type", properties.getProperty("agent.type", "claude-cli"));
+					agent.put("type", properties.getProperty("agent.type", AGENT_DEFAULT_TYPE));
 					agent.put("model", properties.getProperty("agent.model", ""));
 					agent.put("extraArgs", properties.getProperty("agent.extra.args", ""));
 					agent.put("leader", Boolean.parseBoolean(properties.getProperty("agent.leader", "false")));
@@ -1184,15 +1298,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * エージェント保存リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiSaveAgent(HttpExchange exchange) throws IOException {
+	private void apiSaveAgent(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1213,7 +1327,7 @@ public class AgentWebUIServer implements Constants {
 		String originalName = request.path("originalName").asString("");
 		boolean isNewAgent = request.path("isNew").asBoolean(false);
 		String name = request.path("name").asString("");
-		String type = request.path("type").asString("claude-cli");
+		String type = request.path("type").asString(AGENT_DEFAULT_TYPE);
 		String model = request.path("model").asString("");
 		String extraArgs = request.path("extraArgs").asString("");
 		boolean leader = request.path("leader").asBoolean(false);
@@ -1221,48 +1335,52 @@ public class AgentWebUIServer implements Constants {
 		String personality = request.path("personality").asString("");
 		String filename = name + ".properties";
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトが選択されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
 		}
 		if (name.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("エージェント名を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント名を入力してください。"));
 			return;
 		}
 		if (OWNER_AGENT_NAME.equalsIgnoreCase(name)) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("\"" + OWNER_AGENT_NAME + "\" はシステム予約名のため使用できません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("\"" + OWNER_AGENT_NAME + "\" はシステム予約名のため使用できません。"));
 			return;
 		}
-		if (!name.matches("[a-zA-Z0-9]+")) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("エージェント名は半角英数字のみ使用できます。"));
+		if (!name.matches(ALPHANUMERIC_REGEX)) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント名は半角英数字のみ使用できます。"));
 			return;
 		}
-		if (name.length() > 32) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("エージェント名は32文字以内で入力してください。"));
+		if (name.length() > MAX_AGENT_NAME_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント名は" + MAX_AGENT_NAME_LENGTH + "文字以内で入力してください。"));
 			return;
 		}
-		if (model.length() > 32) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("モデルは32文字以内で入力してください。"));
+		if (model.length() > MAX_MODEL_NAME_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("モデルは" + MAX_MODEL_NAME_LENGTH + "文字以内で入力してください。"));
 			return;
 		}
-		if (extraArgs.length() > 128) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("追加引数は128文字以内で入力してください。"));
+		if (extraArgs.length() > MAX_EXTRA_ARGS_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("追加引数は" + MAX_EXTRA_ARGS_LENGTH + "文字以内で入力してください。"));
 			return;
 		}
 		if (role.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("役割名を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("役割名を入力してください。"));
 			return;
 		}
-		if (role.length() > 80) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("役割名は80文字以内で入力してください。"));
+		if (role.length() > MAX_AGENT_ROLE_LENGTH) {
+			sendApiResponse(exchange, WebUIApiResponse.error("役割名は" + MAX_AGENT_ROLE_LENGTH + "文字以内で入力してください。"));
+			return;
+		}
+		if (personality.isBlank()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("性質を入力してください。"));
 			return;
 		}
 		boolean isAgentRename = !originalName.isBlank() && !originalName.equals(name);
 		if (isNewAgent && Files.exists(config.getApplicationAgentsPath(projectName).resolve(filename))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("同名のエージェントが既に存在します。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("同名のエージェントが既に存在します。"));
 			return;
 		}
 		if (isAgentRename && Files.exists(config.getApplicationAgentsPath(projectName).resolve(filename))) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("同名のエージェントが既に存在します。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("同名のエージェントが既に存在します。"));
 			return;
 		}
 		if (!isNewAgent && isProjectSelected() && projectName.equals(context.getProjectName())) {
@@ -1270,7 +1388,7 @@ public class AgentWebUIServer implements Constants {
 			final String finalLookup = lookupName;
 			boolean inConversation = context.getConversations().getAll().stream().anyMatch(c -> finalLookup.equals(c.getAgentName()));
 			if (inConversation) {
-				sendApiResponse(exchange, AgentWebUIApiResponse.error("既に会話に参加しているため、変更することはできません。"));
+				sendApiResponse(exchange, WebUIApiResponse.error("既に会話に参加しているため、変更することはできません。"));
 				return;
 			}
 		}
@@ -1284,28 +1402,28 @@ public class AgentWebUIServer implements Constants {
 					try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(originalFile)), StandardCharsets.UTF_8)) {
 						originalProps.load(reader);
 					}
-					if (!type.equals(originalProps.getProperty("agent.type", "claude-cli"))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+					if (!type.equals(originalProps.getProperty("agent.type", AGENT_DEFAULT_TYPE))) {
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 					if (!model.equals(Objects.toString(originalProps.getProperty("agent.model"), ""))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 					if (!extraArgs.equals(Objects.toString(originalProps.getProperty("agent.extra.args"), ""))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 					if (leader != Boolean.parseBoolean(originalProps.getProperty("agent.leader", "false"))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 					if (!role.equals(Objects.toString(originalProps.getProperty("agent.role"), ""))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 					if (!personality.equals(Objects.toString(originalProps.getProperty("agent.personality"), ""))) {
-						sendApiResponse(exchange, AgentWebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
+						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
 				}
@@ -1313,60 +1431,67 @@ public class AgentWebUIServer implements Constants {
 		}
 
 		/*
-		 * エージェントプロパティ保存
-		 */
-		Path agentsPath = config.getApplicationAgentsPath(projectName);
-		Files.createDirectories(agentsPath);
-		AgentConfig agentConfig = new AgentConfig();
+		* エージェントプロパティ保存・コンテキスト再構築(バックグラウンドで非同期実行)
+		*/
+		final String finalProjectName = projectName;
+		final String finalAgentName = name;
+		final String finalOriginalName = originalName;
+		final String finalFilename = filename;
+		final boolean finalIsAgentRename = isAgentRename;
+		final AgentConfig agentConfig = new AgentConfig();
 		agentConfig.setName(name);
 		agentConfig.setType(type);
 		agentConfig.setModel(model);
 		agentConfig.setLeader(leader);
 		agentConfig.setRole(role);
 		agentConfig.setPersonality(personality);
-		agentConfig.setExtraArgs(List.of(extraArgs.split("\\s+")));
-		agentConfig.save(agentsPath.resolve(filename));
+		agentConfig.setExtraArgs(List.of(extraArgs.split("\s+")));
 
-		/*
-		 * リネーム時は旧プロパティファイルを削除、セッションエントリのキーを更新
-		 */
-		if (isAgentRename) {
-			Files.deleteIfExists(agentsPath.resolve(originalName + ".properties"));
-			if (isProjectSelected() && projectName.equals(context.getProjectName())) {
-				context.getSessions().rename(originalName, name);
-			}
-		}
+		WebUIProcess process = new WebUIProcess(false);
+		currentBackgroundProcess = process;
 
-		/*
-		 * コンテキスト再構築(SSEバッファのエージェントリスト更新)
-		 */
-		if (isProjectSelected() && projectName.equals(context.getProjectName()) && !isOrchestratorRunning()) {
+		new Thread(() -> {
 			try {
-				context = new ContextFactory(config).create(projectName);
-				AgentWebUIEventController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+				Path agentsPath = config.getApplicationAgentsPath(finalProjectName);
+				Files.createDirectories(agentsPath);
+				agentConfig.save(agentsPath.resolve(finalFilename));
+				if (finalIsAgentRename) {
+					Files.deleteIfExists(agentsPath.resolve(finalOriginalName + ".properties"));
+					if (isProjectSelected() && finalProjectName.equals(context.getProjectName())) {
+						context.getSessions().rename(finalOriginalName, finalAgentName);
+					}
+				}
+				if (isProjectSelected() && finalProjectName.equals(context.getProjectName()) && !isOrchestratorRunning()) {
+					try {
+						context = new ContextFactory(config).create(finalProjectName);
+						WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+					} catch (Throwable e) {
+						log.warn("エージェント保存後のコンテキスト再構築に失敗しました。", e);
+					}
+				}
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("name", finalAgentName);
+				process.setResult(res);
+				process.setStatus(WebUIProcess.STATUS_DONE);
+				log.debug("エージェントを保存しました({}/{})。", finalProjectName, finalAgentName);
 			} catch (Throwable e) {
-				log.warn("エージェント保存後のコンテキスト再構築に失敗しました。", e);
+				log.error("エージェントの保存に失敗しました({}/{})。", finalProjectName, finalAgentName, e);
+				process.setMessage("エージェントの保存に失敗しました。");
+				process.setStatus(WebUIProcess.STATUS_ERROR);
 			}
-		}
+		}, "background-save-agent-process").start();
 
-		/*
-		 * レスポンスデータ生成
-		 */
-		Map<String, Object> result = new LinkedHashMap<>();
-		result.put("filename", filename);
-
-		/*
-		 * レスポンス返却
-		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		Map<String, Object> asyncResult = new LinkedHashMap<>();
+		asyncResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
 	}
 
 	/**
 	 * エージェント削除APIリクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiDeleteAgent(HttpExchange exchange) throws IOException {
+	private void apiDeleteAgent(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1387,57 +1512,67 @@ public class AgentWebUIServer implements Constants {
 		String name = request.path("name").asString("");
 		String filename = name + ".properties";
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトが選択されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
 		}
 		if (name.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("エージェント名が指定されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント名が指定されていません。"));
 			return;
 		}
 		if (isProjectSelected() && projectName.equals(context.getProjectName())) {
 			final String finalName = name;
 			boolean inConversation = context.getConversations().getAll().stream().anyMatch(c -> finalName.equals(c.getAgentName()));
 			if (inConversation) {
-				sendApiResponse(exchange, AgentWebUIApiResponse.error("既に会話に参加しているため、変更することはできません。"));
+				sendApiResponse(exchange, WebUIApiResponse.error("既に会話に参加しているため、変更することはできません。"));
 				return;
 			}
 		}
 
 		/*
-		 * エージェントプロパティ削除
-		 */
-		Path agentsPath = config.getApplicationAgentsPath(projectName);
-		Files.deleteIfExists(agentsPath.resolve(filename));
+		* エージェントプロパティ削除・コンテキスト再構築(バックグラウンドで非同期実行)
+		*/
+		final String finalProjectName = projectName;
+		final String finalAgentName = name;
+		final String finalFilename = filename;
 
-		/*
-		 * コンテキスト再構築(SSEバッファのエージェントリスト更新)
-		 */
-		if (isProjectSelected() && projectName.equals(context.getProjectName()) && !isOrchestratorRunning()) {
+		WebUIProcess process = new WebUIProcess(false);
+		currentBackgroundProcess = process;
+
+		new Thread(() -> {
 			try {
-				context = new ContextFactory(config).create(projectName);
-				AgentWebUIEventController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+				Path agentsPath = config.getApplicationAgentsPath(finalProjectName);
+				Files.deleteIfExists(agentsPath.resolve(finalFilename));
+				if (isProjectSelected() && finalProjectName.equals(context.getProjectName()) && !isOrchestratorRunning()) {
+					try {
+						context = new ContextFactory(config).create(finalProjectName);
+						WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+					} catch (Throwable e) {
+						log.warn("エージェント削除後のコンテキスト再構築に失敗しました。", e);
+					}
+				}
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("deletedName", finalAgentName);
+				process.setResult(res);
+				process.setStatus(WebUIProcess.STATUS_DONE);
+				log.debug("エージェントを削除しました({}/{})。", finalProjectName, finalAgentName);
 			} catch (Throwable e) {
-				log.warn("エージェント削除後のコンテキスト再構築に失敗しました。", e);
+				log.error("エージェントの削除に失敗しました({}/{})。", finalProjectName, finalAgentName, e);
+				process.setMessage("エージェントの削除に失敗しました。");
+				process.setStatus(WebUIProcess.STATUS_ERROR);
 			}
-		}
+		}, "background-delete-agent-process").start();
 
-		/*
-		 * レスポンスデータ生成
-		 */
-		Map<String, Object> result = new LinkedHashMap<>();
-
-		/*
-		 * レスポンス返却
-		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		Map<String, Object> asyncResult = new LinkedHashMap<>();
+		asyncResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
 	}
 
 	/**
 	 * プロジェクト削除リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiDeleteProject(HttpExchange exchange) throws IOException {
+	private void apiDeleteProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1456,55 +1591,83 @@ public class AgentWebUIServer implements Constants {
 		 */
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクト名が指定されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名が指定されていません。"));
 			return;
 		}
 
 		/*
-		 * プロジェクトディレクトリ削除
+		 * プロジェクトディレクトリ削除(バックグラウンドスレッドで非同期処理・キャンセル対応)
 		 */
-		Path projectPath = config.getApplicationProjectPath(projectName);
-		if (Files.exists(projectPath)) {
-			try (Stream<Path> walk = Files.walk(projectPath)) {
-				walk.sorted(Comparator.reverseOrder()).forEach(path -> {
-					try {
-						Files.delete(path);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
+		final String finalProjectName = projectName;
+		final Path projectPath = config.getApplicationProjectPath(projectName);
+		final boolean wasActive = isProjectSelected() && projectName.equals(context != null ? context.getProjectName() : null);
+
+		WebUIProcess task = new WebUIProcess(true);
+		currentBackgroundProcess = task;
+
+		new Thread(() -> {
+			try {
+				if (Files.exists(projectPath)) {
+					List<Path> paths;
+					try (Stream<Path> walk = Files.walk(projectPath)) {
+						paths = walk.sorted(Comparator.reverseOrder()).collect(Collectors.toList());
 					}
-				});
+					for (Path p : paths) {
+						if (task.isCancelled()) {
+							break;
+						}
+						try {
+							Files.delete(p);
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						}
+					}
+				}
+
+				if (task.isCancelled()) {
+					log.warn("プロジェクトの削除を中断しました({})。", finalProjectName);
+					task.setMessage("削除を中断しました。ファイルが残存している可能性があります。");
+					task.setStatus(WebUIProcess.STATUS_CANCELLED);
+				} else {
+					// 削除対象がアクティブプロジェクトの場合はコンテキストをクリア
+					if (wasActive) {
+						context = null;
+						orchestratorExecuteFuture = null;
+						stopSignalFuture = null;
+						log.debug("アクティブプロジェクトが削除されたためコンテキストをクリアしました({})。", finalProjectName);
+					}
+					Map<String, Object> res = new LinkedHashMap<>();
+					res.put("deletedName", finalProjectName);
+					res.put("wasActive", wasActive);
+					task.setResult(res);
+					task.setStatus(WebUIProcess.STATUS_DONE);
+					log.debug("プロジェクトを削除しました({})。", finalProjectName);
+				}
 			} catch (UncheckedIOException e) {
-				throw e.getCause();
+				log.warn("プロジェクトディレクトリの削除に失敗しました({})。", finalProjectName, e.getCause());
+				task.setMessage("プロジェクトの削除に失敗しました。ファイルが使用中の可能性があります。");
+				task.setStatus(WebUIProcess.STATUS_ERROR);
+			} catch (Throwable e) {
+				log.warn("プロジェクトディレクトリの削除に失敗しました({})。", finalProjectName, e);
+				task.setMessage("プロジェクトの削除中に予期せぬエラーが発生しました。");
+				task.setStatus(WebUIProcess.STATUS_ERROR);
 			}
-		}
+		}, "background-delete-process").start();
 
 		/*
-		 * 削除対象がアクティブプロジェクトの場合はコンテキストをクリア
-		 */
-		if (isProjectSelected() && projectName.equals(context.getProjectName())) {
-			context = null;
-			orchestratorExecuteFuture = null;
-			stopSignalFuture = null;
-			log.info("アクティブプロジェクトが削除されたためコンテキストをクリアしました({})。", projectName);
-		}
-
-		/*
-		 * レスポンスデータ生成
+		 * 非同期タスク開始を即時返却
 		 */
 		Map<String, Object> result = new LinkedHashMap<>();
-
-		/*
-		 * レスポンス返却
-		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		result.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * 環境設定取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetConfig(HttpExchange exchange) throws IOException {
+	private void apiGetConfig(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1527,15 +1690,15 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 	/**
 	 * 環境設定保存リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiSaveConfig(HttpExchange exchange) throws IOException {
+	private void apiSaveConfig(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1557,16 +1720,16 @@ public class AgentWebUIServer implements Constants {
 		String webuiConnection = request.path("webuiConnection").asString("").trim();
 		String agentTimeout = request.path("agentTimeout").asString("").trim();
 		if (repositoryPath.isEmpty()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("リポジトリパスを入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("リポジトリパスを入力してください。"));
 			return;
 		}
 		try {
 			int port = Integer.parseInt(webuiPort);
-			if (port < 1 || port > 65535) {
+			if (port < 1 || port > MAX_PORT_NUMBER) {
 				throw new NumberFormatException();
 			}
 		} catch (NumberFormatException e) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("WebUIポートには1～65535の整数を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("WebUIポートには1～65535の整数を入力してください。"));
 			return;
 		}
 		try {
@@ -1574,7 +1737,7 @@ public class AgentWebUIServer implements Constants {
 				throw new NumberFormatException();
 			}
 		} catch (NumberFormatException e) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("WebUI同時接続数には1以上の整数を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("WebUI同時接続数には1以上の整数を入力してください。"));
 			return;
 		}
 		try {
@@ -1582,13 +1745,13 @@ public class AgentWebUIServer implements Constants {
 				throw new NumberFormatException();
 			}
 		} catch (NumberFormatException e) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("エージェントタイムアウトには1以上の整数を入力してください。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェントタイムアウトには1以上の整数を入力してください。"));
 			return;
 		}
 
 		/*
-		 * Configセッターで値を更新してファイルに保存
-		 */
+		* Configセッターで値を更新(バックグラウンドで非同期保存)
+		*/
 		config.setApplicationTheme(request.path("theme").asString("").trim());
 		config.setApplicationRepositoryPath(repositoryPath);
 		config.setApplicationWebuiPort(Integer.parseInt(webuiPort));
@@ -1596,22 +1759,39 @@ public class AgentWebUIServer implements Constants {
 		config.setAgentTimeout(Integer.parseInt(agentTimeout));
 		config.setAgentCliCommand(AgentType.CLAUDE_CLI.getName(), request.path("cliClaudeCommand").asString("").trim());
 		config.setAgentCliCommand(AgentType.GEMINI_CLI.getName(), request.path("cliGeminiCommand").asString("").trim());
+		config.setAgentCliCommand(AgentType.ANTIGRAVITY_CLI.getName(), request.path("cliAntigravityCommand").asString("").trim());
 		config.setAgentCliCommand(AgentType.CODEX_CLI.getName(), request.path("cliCodexCommand").asString("").trim());
 		config.setAgentCliCommand(AgentType.COPILOT_CLI.getName(), request.path("cliCopilotCommand").asString("").trim());
-		config.save();
 
-		/*
-		 * レスポンス返却
-		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(null, "環境設定を保存しました。ポートや接続数の変更はサーバー再起動後に反映されます。"));
+		WebUIProcess cfgProcess = new WebUIProcess(false);
+		currentBackgroundProcess = cfgProcess;
+
+		new Thread(() -> {
+			try {
+				config.save();
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("message", "環境設定を保存しました。\nポートや接続数の変更はサーバー再起動後に反映されます。");
+				cfgProcess.setResult(res);
+				cfgProcess.setStatus(WebUIProcess.STATUS_DONE);
+				log.debug("環境設定を保存しました。");
+			} catch (Throwable e) {
+				log.error("環境設定の保存に失敗しました。", e);
+				cfgProcess.setMessage("環境設定の保存に失敗しました。");
+				cfgProcess.setStatus(WebUIProcess.STATUS_ERROR);
+			}
+		}, "background-save-config-process").start();
+
+		Map<String, Object> asyncCfgResult = new LinkedHashMap<>();
+		asyncCfgResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncCfgResult, null));
 	}
 
 	/**
 	 * 会話ログ取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetConversationLog(HttpExchange exchange) throws IOException {
+	private void apiGetConversationLog(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1629,7 +1809,7 @@ public class AgentWebUIServer implements Constants {
 		 * バリデーションチェック
 		 */
 		if (!isProjectSelected()) {
-			sendApiResponse(exchange, AgentWebUIApiResponse.error("プロジェクトが選択されていません。"));
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
 		}
 
@@ -1649,7 +1829,7 @@ public class AgentWebUIServer implements Constants {
 					Map<String, Object> item = new LinkedHashMap<>();
 					item.put("timestamp", entry.path("timestamp").asString(""));
 					item.put("agentName", entry.path("agentName").asString(""));
-					item.put("content", removeIstructLine(entry.path("content").asString("")));
+					item.put("content", entry.path("content").asString(""));
 					JsonNode tu = entry.path("tokenUsage");
 					Map<String, Object> tokenUsage = new LinkedHashMap<>();
 					tokenUsage.put("inputTokens", tu.path("inputTokens").asLong(0));
@@ -1668,15 +1848,269 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
+	}
+
+	/**
+	 * セッションクリアリクエスト時の処理を行います。<br>
+	 * ログディレクトリ・会話ファイル・セッションファイルを削除します。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiClearSession(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(セッションクリア)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * リクエスト情報取得
+		 */
+		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
+		JsonNode request = MAPPER.readTree(requestBytes);
+
+		String projectName = request.path("project").asString("");
+		if (projectName.isBlank()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが指定されていません。"));
+			return;
+		}
+		if (isOrchestratorRunning()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("オーケストレーター実行中はセッションをクリアできません。"));
+			return;
+		}
+
+		/*
+		 * ファイル削除・コンテキスト再構築(バックグラウンドで非同期実行)
+		 */
+		final String finalProjectName = projectName;
+		final boolean wasActive = isProjectSelected() && projectName.equals(context != null ? context.getProjectName() : null);
+
+		WebUIProcess process = new WebUIProcess(false);
+		currentBackgroundProcess = process;
+
+		new Thread(() -> {
+			try {
+				/*
+				 * ログディレクトリ削除
+				 */
+				Path logsPath = config.getApplicationLogPath(finalProjectName);
+				if (Files.exists(logsPath)) {
+					try (Stream<Path> walk = Files.walk(logsPath)) {
+						walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+							try {
+								Files.delete(p);
+							} catch (IOException e) {
+								throw new UncheckedIOException(e);
+							}
+						});
+					}
+				}
+
+				/*
+				 * メモリディレクトリ削除
+				 */
+				Path memoryPath = config.getApplicationMemoryPath(finalProjectName);
+				if (Files.exists(memoryPath)) {
+					try (Stream<Path> walk = Files.walk(memoryPath)) {
+						walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+							try {
+								Files.delete(p);
+							} catch (IOException e) {
+								throw new UncheckedIOException(e);
+							}
+						});
+					}
+				}
+
+				/*
+				 * 会話・セッションファイル削除
+				 */
+				Files.deleteIfExists(config.getAgentConversationLogfile(finalProjectName));
+				Files.deleteIfExists(config.getAgentSessionStore(finalProjectName));
+
+				/*
+				 * アクティブプロジェクトの場合はコンテキスト再構築
+				 */
+				if (wasActive) {
+					try {
+						context = new ContextFactory(config).create(finalProjectName);
+						WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+					} catch (Throwable e) {
+						log.warn("セッションクリア後のコンテキスト再構築に失敗しました。", e);
+					}
+				}
+
+				log.debug("セッション情報をクリアしました({})。", finalProjectName);
+				Map<String, Object> res = new LinkedHashMap<>();
+				res.put("project", finalProjectName);
+				res.put("message", "セッション情報をクリアしました。");
+				process.setResult(res);
+				process.setStatus(WebUIProcess.STATUS_DONE);
+			} catch (Throwable e) {
+				log.warn("セッションのクリアに失敗しました({})。", finalProjectName, e);
+				process.setMessage("セッションのクリアに失敗しました。ファイルが使用中の可能性があります。");
+				process.setStatus(WebUIProcess.STATUS_ERROR);
+			}
+		}, "background-clear-session-process").start();
+
+		/*
+		 * 非同期プロセス開始を即時返却
+		 */
+		Map<String, Object> asyncResult = new LinkedHashMap<>();
+		asyncResult.put("isAsync", true);
+		sendApiResponse(exchange, WebUIApiResponse.ok(asyncResult, null));
+	}
+
+	/**
+	 * 制御キーワード取得リクエスト時の処理を行います。<br>
+	 * ディスパッチ・完了・中断の各キーワード文字列を返却します。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiGetControlKeywords(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(制御キーワード取得)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * レスポンスデータ生成
+		 */
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("finalizeKeyword", AGENT_FINALIZE_KEYWORD);
+		result.put("interruptKeyword", AGENT_INTERRRUPTE_KEYWORD);
+		result.put("dispatchRegexp", AGENT_DISPATH_REGEX);
+
+		/*
+		 * レスポンス返却
+		 */
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
+	}
+
+	/**
+	 * ログダウンロードリクエスト時の処理を行います。<br>
+	 * プロジェクトの .orchestrator ディレクトリ配下を ZIP 圧縮してレスポンスします。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiDownloadLogs(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(ログダウンロード)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * リクエスト情報取得
+		 */
+		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
+		JsonNode request = MAPPER.readTree(requestBytes);
+		String projectName = request.path("project").asString("");
+		if (projectName.isBlank()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが指定されていません。"));
+			return;
+		}
+
+		Path orchestratorPath = config.getApplicationProjectPath(projectName).resolve(ORCHESTRATOR_HOME_PATH);
+		if (!Files.exists(orchestratorPath)) {
+			sendApiResponse(exchange, WebUIApiResponse.error("ログデータが存在しません。"));
+			return;
+		}
+
+		/*
+		 * ファイル名生成: {projectName}_yyyyMMdd-HHmmss.zip
+		 */
+		String timestamp = DATE_FORMAT_YYYYMMDD_HHMMSS.format(new Date());
+		String fileName = projectName + "_" + timestamp + ".zip";
+
+		/*
+		 * ZIP 圧縮
+		 */
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+			Files.walk(orchestratorPath).filter(p -> !Files.isDirectory(p)).forEach(p -> {
+				try {
+					String entryName = orchestratorPath.getParent().relativize(p).toString().replace("\\", "/");
+					zos.putNextEntry(new java.util.zip.ZipEntry(entryName));
+					Files.copy(p, zos);
+					zos.closeEntry();
+				} catch (IOException e) {
+					log.error("ZIPエントリ追加でエラーが発生しました(" + p + ")。", e);
+				}
+			});
+		} catch (Throwable e) {
+			log.error("ZIP圧縮でエラーが発生しました。", e);
+			sendApiResponse(exchange, WebUIApiResponse.error("ZIP圧縮処理でエラーが発生しました。"));
+			return;
+		}
+
+		/*
+		 * バイナリレスポンス返却
+		 */
+		byte[] zipBytes = baos.toByteArray();
+		exchange.getResponseHeaders().set("Content-Type", "application/zip");
+		exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+		exchange.getResponseHeaders().set("Connection", "close");
+		exchange.sendResponseHeaders(HTTP_STATUS_OK, zipBytes.length);
+		try (OutputStream os = exchange.getResponseBody()) {
+			os.write(zipBytes);
+		} catch (IOException e) {
+			// レスポンスcloseの例外は無視
+		}
+	}
+
+	/**
+	 * バックグラウンドプロセスキャンセルリクエスト時の処理を行います。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 */
+	private void apiCancelProcess(HttpExchange exchange) throws IOException {
+		log.debug("APIリクエスト(バックグラウンドプロセスキャンセル)を受け付けました。");
+		WebUIProcess task = currentBackgroundProcess;
+		if (task == null || !WebUIProcess.STATUS_RUNNING.equals(task.getStatus())) {
+			sendApiResponse(exchange, WebUIApiResponse.error("実行中のタスクが存在しません。"));
+			return;
+		}
+		if (!task.isCancellable()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("このタスクはキャンセルできません。"));
+			return;
+		}
+		task.cancel();
+		sendApiResponse(exchange, WebUIApiResponse.ok(null, "中断要求を受け付けました。"));
+	}
+
+	/**
+	 * バックグラウンドプロセスステータス取得リクエスト時の処理を行います。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 */
+	private void apiGetProcessStatus(HttpExchange exchange) throws IOException {
+		log.debug("APIリクエスト(バックグラウンドプロセスステータス取得)を受け付けました。");
+		WebUIProcess task = currentBackgroundProcess;
+		Map<String, Object> data = new LinkedHashMap<>();
+		if (task == null) {
+			data.put("status", "idle");
+		} else {
+			data.put("status", task.getStatus());
+			data.put("cancellable", task.isCancellable());
+			if (task.getMessage() != null) {
+				data.put("message", task.getMessage());
+			}
+			if (task.getResult() != null) {
+				data.put("result", task.getResult());
+			}
+		}
+		sendApiResponse(exchange, WebUIApiResponse.ok(data));
 	}
 
 	/**
 	 * プロジェクトデフォルト値取得リクエスト時の処理を行います。<br>
 	 * @param exchange リクエストレスポンス情報
-	 * @throws IOException リクエスト処理に失敗した場合にスローされます
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
 	 */
-	private void apiGetDefaultProject(HttpExchange exchange) throws IOException {
+	private void apiGetDefaultProject(HttpExchange exchange) throws Throwable {
 		/*
 		 * リクエストパス取得
 		 */
@@ -1694,7 +2128,7 @@ public class AgentWebUIServer implements Constants {
 		 * デフォルトプロジェクト設定読み込み
 		 */
 		Properties defaults = new Properties();
-		try (Reader reader = new InputStreamReader(new BufferedInputStream(AgentWebUIServer.class.getResourceAsStream(DEFAULT_PROJECT_FILE)), StandardCharsets.UTF_8)) {
+		try (Reader reader = new InputStreamReader(new BufferedInputStream(WebUIServer.class.getResourceAsStream(DEFAULT_PROJECT_FILE)), StandardCharsets.UTF_8)) {
 			defaults.load(reader);
 		} catch (Exception e) {
 			log.warn("デフォルトプロジェクト設定ファイルの読み込みに失敗しました。", e);
@@ -1710,7 +2144,7 @@ public class AgentWebUIServer implements Constants {
 		/*
 		 * レスポンス返却
 		 */
-		sendApiResponse(exchange, AgentWebUIApiResponse.ok(result));
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
 	}
 
 }

@@ -1,0 +1,5 @@
+#set($h = "#")
+必ず、ディスパッチ・作業完了・作業中断の指示を末尾行に出力する必要があるので、再度回答してください。
+- ディスパッチを行う場合：`${config.agentDispatchKeywordPattern.pattern()}` (正規表現グループ部が目的の専任担当者名)
+- 作業完了する場合(但し、リーダーエージェントの発言許可)：`${config.agentFinalizeKeyword}`
+- 作業中断する場合(但し、リーダーエージェントの発言許可)：`${config.agentStopKeyword}`

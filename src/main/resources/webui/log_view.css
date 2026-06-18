@@ -118,3 +118,7 @@
 	background: var(--color-notice-bg);
 	border-color: var(--color-notice-border-a);
 }
+/* ---- オーナーエントリトークン情報・時間情報を非表示 ---- */
+.log-turn.is-owner .log-turn-tokens {
+	display: none;
+}

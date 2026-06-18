@@ -3,7 +3,6 @@ package org.ideaccum.ai.orchestrator.context;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,7 +12,6 @@ import java.util.stream.Collectors;
 
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.Agent;
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -33,10 +31,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *-->
  */
 public class Conversations implements Constants {
-
-	/** タイムスタンプフォーマット */
-	@JsonIgnore
-	private static final DateTimeFormatter FORMAT_DATE = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
 	/** コンテキストオブジェクト */
 	@JsonIgnore
@@ -68,8 +62,9 @@ public class Conversations implements Constants {
 	 */
 	private void restore() {
 		Config config = context.getConfig();
-		if (!Files.exists(config.getAgentConversationLogfile(context.getProjectName())))
+		if (!Files.exists(config.getAgentConversationLogfile(context.getProjectName()))) {
 			return;
+		}
 		try {
 			List<Conversation> loaded = MAPPER.readValue( //
 					config.getAgentConversationLogfile(context.getProjectName()).toFile(), //
@@ -82,7 +77,7 @@ public class Conversations implements Constants {
 			entries.clear();
 			entries.addAll(loaded);
 		} catch (Throwable e) {
-			throw new ApplicationException("会話ログのリストアに失敗しました", e);
+			throw new InternalError("会話ログのリストアに失敗しました", e);
 		}
 	}
 
@@ -97,7 +92,7 @@ public class Conversations implements Constants {
 			}
 			MAPPER.writerWithDefaultPrettyPrinter().writeValue(config.getAgentConversationLogfile(context.getProjectName()).toFile(), entries);
 		} catch (IOException e) {
-			throw new ApplicationException("会話ログの保存に失敗しました", e);
+			throw new InternalError("会話ログの保存に失敗しました", e);
 		}
 	}
 
@@ -124,7 +119,7 @@ public class Conversations implements Constants {
 	 * @param tokenUsage トークン使用量
 	 */
 	public void add(String agentName, String content, TokenUsage tokenUsage) {
-		entries.add(new Conversation(context, LocalDateTime.now().format(FORMAT_DATE), agentName, content, tokenUsage));
+		entries.add(new Conversation(context, LocalDateTime.now().format(DATE_FORMATETTR_YYYY_MM_DD_HH_MM_SS), agentName, content, tokenUsage));
 		persist();
 	}
 

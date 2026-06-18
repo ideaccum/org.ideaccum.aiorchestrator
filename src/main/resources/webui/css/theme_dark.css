@@ -58,6 +58,7 @@
 	--theme-field-disabled-text: #858585; /* 非活性・読み取り専用フィールドテキスト色 */
 	--theme-field-label: #cccccc; /* フォームラベル文字色 */
 	--theme-field-label-note: #d7a85f; /* フォームラベル注記文字色 */
+	--theme-code-bg: #2d2d2d; /* コードブロック背景色 */
 
 	/* ---- カードレイアウト ---- */
 	--theme-card-bg: #252526; /* カード背景色(ボディ) */
@@ -97,6 +98,7 @@
 	/* ---- 状態色: 非活性 ---- */
 	--theme-idle: #6c6c6c;
 	--theme-idle-bg: #2d2d2d;
+	--theme-toggle-off: #48484a; /* トグルスイッチOFF時トラック色 */
 
 	/* ---- 新規アイテム ---- */
 	--theme-new-item-bg: #0c2d4a;

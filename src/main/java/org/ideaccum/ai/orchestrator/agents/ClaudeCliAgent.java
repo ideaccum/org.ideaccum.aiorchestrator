@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.ideaccum.ai.orchestrator.agent.AgentConfig;
 import org.ideaccum.ai.orchestrator.context.Context;
 import org.ideaccum.ai.orchestrator.context.TokenUsage;
+import org.ideaccum.ai.orchestrator.util.StringUtils;
 
 import tools.jackson.databind.JsonNode;
 
@@ -62,7 +63,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 		List<String> list = new ArrayList<>();
 		// 読み取り、編集ディレクトリ
 		list.add("--add-dir");
-		list.add(getConfig().getApplicationProjectPath(getContext().getProjectName()).normalize().toString());
+		list.add(getContext().getAgentRootPath().normalize().toString());
 
 		// 直近セッション継続
 		//list.add("--continue");
@@ -116,7 +117,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 	 */
 	@Override
 	protected void prepare() throws Throwable {
-		Files.createDirectories(getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".claude"));
+		Files.createDirectories(getContext().getAgentRootPath().resolve(AGENT_CONFIG_DIR_CLAUDE));
 	}
 
 	/**
@@ -132,13 +133,18 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			if (response.indexOf("Not logged in") >= 0) {
 				result = "認証が行われていません。";
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupErrorで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -155,13 +161,36 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (!StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			JsonNode node = MAPPER.readTree(response);
 			String type = node.path("type").asString();
 
 			if ("system".equals(type)) {
 				String subtype = node.path("subtype").asString();
+				if ("thinking_tokens".equals(subtype)) {
+					result = "思考中です。";
+				}
+				if ("task_updated".equals(subtype)) {
+					result = "内部タスクステータスを更新しました。";
+				}
 				if ("init".equals(subtype)) {
 					result = "スレッドを初期化しました。";
+				}
+				if ("task_started".equals(subtype)) {
+					String description = node.path("description").asString();
+					result = "サブタスク開始: " + description;
+				}
+				if ("task_progress".equals(subtype)) {
+					String description = node.path("description").asString();
+					result = "サブタスク進捗: " + description;
+				}
+				if ("task_notification".equals(subtype)) {
+					String status = node.path("status").asString();
+					String summary = node.path("summary").asString();
+					result = "サブタスク(" + status + "): " + summary;
 				}
 			}
 			if ("result".equals(type)) {
@@ -174,23 +203,31 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 			if ("assistant".equals(type)) {
 				String messageContentType = node.path("message").path("content").path(0).path("type").asString();
 				if ("text".equals(messageContentType)) {
-					result = "エージェントメッセージがレスポンスされました。。";
+					result = "エージェントメッセージがレスポンスされました。";
 				}
 				if ("thinking".equals(messageContentType)) {
 					String thinking = node.path("message").path("content").path(0).path("thinking").asString();
 					result = "考慮中: " + thinking;
 				}
+				if ("tool_use".equals(messageContentType)) {
+					String toolName = node.path("message").path("content").path(0).path("name").asString();
+					result = "ツール実行中: " + toolName;
+				}
+			}
+			if ("user".equals(type)) {
+				result = "ユーザー指示を確認中です。";
 			}
 
 			// メッセージフック漏れ確認用エラーコンソール出力
 			if (result == null) {
-				System.err.println("[WARN] " + node.toString());
+				log.warn("[Internal] ClaudeCliAgentのlookupProgressでメッセージフック漏れがあります : " + node.toString());
 				result = node.toString();
 			}
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupProgressで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -214,6 +251,8 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupSessionIdで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -253,6 +292,8 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 				return null;
 			}
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupContentで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -294,6 +335,8 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupUsageで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}

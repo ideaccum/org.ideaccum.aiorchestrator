@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.ideaccum.ai.orchestrator.Constants;
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
 
 /**
  * 環境設定情報管理クラスです。<br>
@@ -62,19 +61,18 @@ public class Config implements Constants {
 
 	/**
 	 * プロパティリソースを読み込みます。<br>
-	 * 指定ファイルが存在しない場合はクラスパス上のデフォルト設定({@code /default-config.properties})を読み込み、
-	 * 同時に指定パスへコピーして次回以降はファイルから読み込めるようにします。<br>
+	 * @param configFile 環境設定プロパティリソースパス
 	 */
 	private void load(Path configFile) {
 		if (configFile == null) {
-			throw new ApplicationException("環境設定情報ファイルパスが指定されていません");
+			throw new InternalError("環境設定情報ファイルパスが指定されていません");
 		}
 		if (!Files.exists(configFile)) {
 			Properties defaults = new Properties();
 			try (InputStream is = Config.class.getResourceAsStream(DEFALUT_CONFIG_FILE)) {
 				defaults.load(is);
 			} catch (IOException e) {
-				throw new ApplicationException("デフォルト環境設定情報ファイルの読み込みに失敗しました", e);
+				throw new InternalError("デフォルト環境設定情報ファイルの読み込みに失敗しました", e);
 			}
 			try {
 				if (configFile.getParent() != null) {
@@ -84,14 +82,14 @@ public class Config implements Constants {
 					defaults.store(writer, null);
 				}
 			} catch (IOException e) {
-				throw new ApplicationException("デフォルト環境設定情報ファイルの書き出しに失敗しました", e);
+				throw new InternalError("デフォルト環境設定情報ファイルの書き出しに失敗しました", e);
 			}
 		}
 		properties = new Properties();
 		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
 			properties.load(reader);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("環境設定情報ファイル(%s)の読み込みに失敗しました", configFile), e);
+			throw new InternalError(String.format("環境設定情報ファイル(%s)の読み込みに失敗しました", configFile), e);
 		}
 	}
 
@@ -119,6 +117,7 @@ public class Config implements Constants {
 		map.put("agentTimeout", properties.getProperty("agent.timeout", ""));
 		map.put("cliClaudeCommand", properties.getProperty("agent.cli.claude-cli.command", ""));
 		map.put("cliGeminiCommand", properties.getProperty("agent.cli.gemini-cli.command", ""));
+		map.put("cliAntigravityCommand", properties.getProperty("agent.cli.antigravity-cli.command", ""));
 		map.put("cliCodexCommand", properties.getProperty("agent.cli.codex-cli.command", ""));
 		map.put("cliCopilotCommand", properties.getProperty("agent.cli.copilot-cli.command", ""));
 		return map;
@@ -127,22 +126,20 @@ public class Config implements Constants {
 	/**
 	 * プロパティ必須定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
-	private void checkRequired(String key) throws ApplicationException {
+	private void checkRequired(String key) {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
-			throw new ApplicationException(String.format("環境定義キー(%s)が指定されていません", key));
+			throw new InternalError(String.format("環境定義キー(%s)が指定されていません", key));
 		}
 	}
 
 	/**
 	 * 正規表現パターン型定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
 	@SuppressWarnings("unused")
-	private void checkRegexp(String key) throws ApplicationException {
+	private void checkRegexp(String key) {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
 			return;
@@ -150,16 +147,15 @@ public class Config implements Constants {
 		try {
 			Pattern.compile(raw);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("環境定義キー(%s)が正規表現パターンにパースできません", key));
+			throw new InternalError(String.format("環境定義キー(%s)が正規表現パターンにパースできません", key));
 		}
 	}
 
 	/**
 	 * プロパティ数値型定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
-	private void checkInteger(String key) throws ApplicationException {
+	private void checkInteger(String key) {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
 			return;
@@ -167,17 +163,16 @@ public class Config implements Constants {
 		try {
 			Integer.parseInt(raw);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("環境定義キー(%s)がint型にパースできません", key));
+			throw new InternalError(String.format("環境定義キー(%s)がint型にパースできません", key));
 		}
 	}
 
 	/**
 	 * プロパティ真偽値型定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
 	@SuppressWarnings("unused")
-	private void checkBoolean(String key) throws ApplicationException {
+	private void checkBoolean(String key) throws InternalError {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
 			return;
@@ -185,7 +180,7 @@ public class Config implements Constants {
 		try {
 			Boolean.parseBoolean(raw);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("環境定義キー(%s)がboolean型にパースできません", key));
+			throw new InternalError(String.format("環境定義キー(%s)がboolean型にパースできません", key));
 		}
 	}
 
@@ -366,6 +361,19 @@ public class Config implements Constants {
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_LOGS_PATH);
+	}
+
+	/**
+	 * アプリケーションメモリパスを取得します。<br>
+	 * @param projectName プロジェクト名
+	 * @return アプリケーションログパス
+	 */
+	public Path getApplicationMemoryPath(String projectName) {
+		//String key = "application.memory.path";
+		//String raw = properties.getProperty(key);
+		//checkRequired(key);
+		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
+		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_MEMORY_PATH);
 	}
 
 	/**

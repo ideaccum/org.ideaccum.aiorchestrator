@@ -67,4 +67,9 @@ public interface Agent extends Constants {
 	 * @throws Throwable プロンプト実行時に予期せぬエラーが発生した場合にスローされます
 	 */
 	public AgentResult execute(String prompt) throws Throwable;
+
+	/**
+	 * エージェントの実行中プロセスを強制終了します。<br>
+	 */
+	public void stop();
 }

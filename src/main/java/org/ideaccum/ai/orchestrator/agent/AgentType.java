@@ -2,6 +2,7 @@ package org.ideaccum.ai.orchestrator.agent;
 
 import java.util.Objects;
 
+import org.ideaccum.ai.orchestrator.agents.AntigravityCliAgent;
 import org.ideaccum.ai.orchestrator.agents.ClaudeCliAgent;
 import org.ideaccum.ai.orchestrator.agents.CodexCliAgent;
 import org.ideaccum.ai.orchestrator.agents.CopilotCliAgent;
@@ -27,6 +28,9 @@ public enum AgentType {
 
 	/** Gemini CLI */
 	GEMINI_CLI(GeminiCliAgent.class, "gemini-cli"),
+
+	/** Antigravity CLI */
+	ANTIGRAVITY_CLI(AntigravityCliAgent.class, "antigravity-cli"),
 
 	/** Codex CLI */
 	CODEX_CLI(CodexCliAgent.class, "codex-cli"),

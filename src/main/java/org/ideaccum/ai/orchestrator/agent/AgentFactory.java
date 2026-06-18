@@ -14,7 +14,6 @@ import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agents.AbstractCliAgent;
 import org.ideaccum.ai.orchestrator.context.Context;
 import org.ideaccum.ai.orchestrator.context.Session;
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
 
 /**
  * エージェントファクトリクラスです。<br>
@@ -53,7 +52,7 @@ public class AgentFactory implements Constants {
 		 */
 		Path agentsPath = context.getConfig().getApplicationAgentsPath(context.getProjectName());
 		if (!Files.exists(agentsPath)) {
-			throw new ApplicationException(String.format("エージェント設定ディレクトリが見つかりません(%s)。", context.getConfig().getApplicationAgentsPath(context.getProjectName())));
+			throw new InternalError(String.format("エージェント設定ディレクトリが見つかりません(%s)。", context.getConfig().getApplicationAgentsPath(context.getProjectName())));
 		}
 
 		/*
@@ -65,7 +64,7 @@ public class AgentFactory implements Constants {
 				agentConfigs.add(new AgentConfig(file));
 			}
 		} catch (Throwable e) {
-			throw new ApplicationException("エージェント設定の読み込みに失敗しました。", e);
+			throw new InternalError("エージェント設定の読み込みに失敗しました。", e);
 		}
 		Collections.sort(agentConfigs, new Comparator<AgentConfig>() {
 			@Override
@@ -103,7 +102,6 @@ public class AgentFactory implements Constants {
 	 * エージェントタイプに応じたエージェントインスタンスを生成します。<br>
 	 * @param agentConfig エージェント設定情報
 	 * @return エージェントインスタンス
-	 * @throws ApplicationException 未知のエージェントタイプが指定された場合にスローされます
 	 */
 	private Agent createAgent(AgentConfig agentConfig) {
 		AgentType agentType = AgentType.of(agentConfig.getType());
@@ -112,10 +110,10 @@ public class AgentFactory implements Constants {
 				try {
 					return (AbstractCliAgent) agentType.getType().getConstructor(Context.class, AgentConfig.class).newInstance(context, agentConfig);
 				} catch (Throwable e) {
-					throw new ApplicationException(String.format("エージェントタイプ(%s)のインスタンス生成に失敗しました", agentConfig.getType()));
+					throw new InternalError(String.format("エージェントタイプ(%s)のインスタンス生成に失敗しました", agentConfig.getType()));
 				}
 			}
 		}
-		throw new ApplicationException(String.format("未知のエージェントタイプ(%s)が指定されました", agentConfig.getType()));
+		throw new InternalError(String.format("未知のエージェントタイプ(%s)が指定されました", agentConfig.getType()));
 	}
 }

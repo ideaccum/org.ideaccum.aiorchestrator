@@ -9,6 +9,7 @@ import java.util.Map;
 import org.ideaccum.ai.orchestrator.agent.AgentConfig;
 import org.ideaccum.ai.orchestrator.context.Context;
 import org.ideaccum.ai.orchestrator.context.TokenUsage;
+import org.ideaccum.ai.orchestrator.util.StringUtils;
 
 import tools.jackson.databind.JsonNode;
 
@@ -70,9 +71,9 @@ public class CopilotCliAgent extends AbstractCliAgent {
 		list.add("--allow-all-tools");
 		list.add("--no-ask-user");
 		list.add("--config-dir");
-		list.add("./.copilot");
+		list.add("./" + AGENT_CONFIG_DIR_COPILOT);
 		list.add("--log-dir");
-		list.add("./.copilot");
+		list.add("./" + AGENT_CONFIG_DIR_COPILOT);
 		return list;
 	}
 
@@ -83,7 +84,7 @@ public class CopilotCliAgent extends AbstractCliAgent {
 	 */
 	@Override
 	protected void prepare() throws Throwable {
-		Files.createDirectories(getContext().getConfig().getApplicationProjectPath(getContext().getProjectName()).resolve(".copilot"));
+		Files.createDirectories(getContext().getAgentRootPath().resolve(AGENT_CONFIG_DIR_COPILOT));
 	}
 
 	/**
@@ -102,7 +103,8 @@ public class CopilotCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
-			System.err.println("[ERROR] " + response);
+			log.error(response);
+			log.error("lookupErrorで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -119,6 +121,10 @@ public class CopilotCliAgent extends AbstractCliAgent {
 		}
 		String result = null;
 		try {
+			if (!StringUtils.isJSON(response)) {
+				return result;
+			}
+
 			JsonNode node = MAPPER.readTree(response);
 
 			if ("session.mcp_server_status_changed".equals(node.path("type").asString())) {
@@ -180,12 +186,14 @@ public class CopilotCliAgent extends AbstractCliAgent {
 
 			// メッセージフック漏れ確認用エラーコンソール出力
 			if (result == null) {
-				System.err.println("[WARN] " + node.toString());
+				log.warn("[Internal] CopilotCliAgentのlookupProgressでメッセージフック漏れがあります : " + node.toString());
 				result = node.toString();
 			}
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupProgressで予期せぬエラーが発生しました。", e);
 			return response;
 		}
 	}
@@ -204,6 +212,8 @@ public class CopilotCliAgent extends AbstractCliAgent {
 		try {
 			return null;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupSessionIdで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -239,6 +249,8 @@ public class CopilotCliAgent extends AbstractCliAgent {
 				return null;
 			}
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupContentで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}
@@ -278,6 +290,8 @@ public class CopilotCliAgent extends AbstractCliAgent {
 
 			return result;
 		} catch (Throwable e) {
+			log.error(response);
+			log.error("lookupUsageで予期せぬエラーが発生しました。", e);
 			return null;
 		}
 	}

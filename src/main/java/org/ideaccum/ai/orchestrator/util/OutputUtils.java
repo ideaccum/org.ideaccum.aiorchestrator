@@ -9,7 +9,7 @@ import java.util.List;
 
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.context.Context;
-import org.ideaccum.ai.orchestrator.webui.AgentWebUIEventController;
+import org.ideaccum.ai.orchestrator.webui.WebUIController;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -72,14 +72,13 @@ public class OutputUtils implements Constants {
 			}
 
 			Object outputContent = isJSON(response) ? MAPPER.readTree(response) : new StringNode(response).toPrettyString();
-			DumpEntry outputObject = new DumpEntry(DEFAULT_DATE_FORMAT.format(new Date()), outputContent);
+			DumpEntry outputObject = new DumpEntry(DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date()), outputContent);
 			outputList.add(outputObject);
 
 			if (!Files.exists(outputPath)) {
 				Files.createDirectories(outputPath);
 			}
 
-			//System.out.println("\u001b[00;36m" + mapper.writeValueAsString(outputObject) + "\u001b[00m");
 			MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
 		} catch (Throwable e) {
 			e.printStackTrace();
@@ -104,15 +103,14 @@ public class OutputUtils implements Constants {
 			}
 
 			Object outputContent = new StringNode(content).toPrettyString();
-			DumpEntry outputObject = new DumpEntry(DEFAULT_DATE_FORMAT.format(new Date()), outputContent);
+			DumpEntry outputObject = new DumpEntry(DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date()), outputContent);
 			outputList.add(outputObject);
 
 			if (!Files.exists(outputPath)) {
 				Files.createDirectories(outputPath);
 			}
 
-			System.out.print("\u001b[00;93m" + content + "\u001b[00m");
-			AgentWebUIEventController.instance().publishContent(agentName, content);
+			WebUIController.instance().publishContent(agentName, content);
 			MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
 		} catch (Throwable e) {
 			e.printStackTrace();

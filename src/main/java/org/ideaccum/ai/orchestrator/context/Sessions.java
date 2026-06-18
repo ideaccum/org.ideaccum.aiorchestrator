@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ideaccum.ai.orchestrator.Constants;
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
 
 /**
  * 各エージェントのCLIセッションIDを永続管理するストアクラスです。<br>
@@ -26,7 +25,6 @@ public class Sessions implements Constants {
 	/** プロジェクト名 */
 	private String projectName;
 
-	
 	/** 環境設定情報 */
 	private Config config;
 
@@ -49,8 +47,9 @@ public class Sessions implements Constants {
 	 * セッションストアのリストアを行います。<br>
 	 */
 	private void restore() {
-		if (!Files.exists(config.getAgentSessionStore(projectName)))
+		if (!Files.exists(config.getAgentSessionStore(projectName))) {
 			return;
+		}
 		try {
 			Map<String, Session> loaded = MAPPER.readValue( //
 					config.getAgentSessionStore(projectName).toFile(), //
@@ -58,7 +57,7 @@ public class Sessions implements Constants {
 			);
 			entries.putAll(loaded);
 		} catch (Throwable e) {
-			throw new ApplicationException("セッションストアのリストアに失敗しました", e);
+			throw new InternalError("セッションストアのリストアに失敗しました", e);
 		}
 	}
 
@@ -75,7 +74,7 @@ public class Sessions implements Constants {
 					entries //
 			);
 		} catch (Throwable e) {
-			throw new ApplicationException("セッションストアの保存に失敗しました", e);
+			throw new InternalError("セッションストアの保存に失敗しました", e);
 		}
 	}
 

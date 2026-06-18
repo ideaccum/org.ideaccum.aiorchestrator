@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Properties;
 
 import org.ideaccum.ai.orchestrator.Constants;
-import org.ideaccum.ai.orchestrator.exception.ApplicationException;
 
 /**
  * エージェント個別環境定義アクセス用のクラスです。<br>
@@ -58,12 +57,12 @@ public class AgentConfig implements Constants {
 	private Properties load(Path configFile) {
 		Properties properties = new Properties();
 		if (configFile == null || !Files.exists(configFile)) {
-			throw new ApplicationException(String.format("エージェント設定ファイル(%s)が見つかりません。", configFile.toString()));
+			throw new InternalError(String.format("エージェント設定ファイル(%s)が見つかりません。", configFile.toString()));
 		}
 		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
 			properties.load(reader);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("エージェント設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
+			throw new InternalError(String.format("エージェント設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
 		}
 		return properties;
 	}
@@ -82,21 +81,19 @@ public class AgentConfig implements Constants {
 	/**
 	 * プロパティ必須定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
-	private void checkRequired(String key) throws ApplicationException {
+	private void checkRequired(String key) {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
-			throw new ApplicationException(String.format("環境定義キー(%s)が指定されていません。", key));
+			throw new InternalError(String.format("環境定義キー(%s)が指定されていません。", key));
 		}
 	}
 
 	/**
 	 * プロパティ真偽型定義チェックを行います。<br>
 	 * @param key プロパティキー
-	 * @throws ApplicationException 定義不正の場合にスローされます
 	 */
-	private void checkBoolean(String key) throws ApplicationException {
+	private void checkBoolean(String key) {
 		String raw = properties.getProperty(key);
 		if (raw == null || raw.isBlank()) {
 			return;
@@ -104,7 +101,7 @@ public class AgentConfig implements Constants {
 		try {
 			Boolean.parseBoolean(raw);
 		} catch (Throwable e) {
-			throw new ApplicationException(String.format("環境定義キー(%s)がboolean型にパースできません。", key));
+			throw new InternalError(String.format("環境定義キー(%s)がboolean型にパースできません。", key));
 		}
 	}
 
@@ -129,8 +126,8 @@ public class AgentConfig implements Constants {
 	}
 
 	/**
-	 * エージェントタイプ(gemini、claude、codex)を取得します。<br>
-	 * @return エージェントタイプ(gemini、claude、codex)
+	 * エージェントタイプ(gemini、claude、codex、antigravity)を取得します。<br>
+	 * @return エージェントタイプ(gemini、claude、codex、antigravity)
 	 */
 	public String getType() {
 		String key = "agent.type";
@@ -151,6 +148,7 @@ public class AgentConfig implements Constants {
 	/**
 	 * エージェントモデルを取得します。<br>
 	 * Gemini(gemini-3-flash-preview、gemini-3.1-flash-lite-preview、gemini-2.5-flash、gemini-2.5-flash-lite)<br>
+	 * Antigravity(gemini-3-flash-preview、gemini-3.1-flash-lite-preview、gemini-2.5-flash、gemini-2.5-flash-lite)<br>
 	 * Claude(sonnet、opus、haiku)<br>
 	 * Codex(gpt-5.1、gpt-5.4-mini、gpt-5.3-codex、gpt-5.2-codex、gpt-5.2、gpt-5.1-codex-max、gpt-5.1-codex-mini))<br>
 	 * @return エージェントモデル

@@ -2,7 +2,9 @@ package org.ideaccum.ai.orchestrator.webui;
 
 import java.util.List;
 
+import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.Agent;
+import org.ideaccum.ai.orchestrator.context.TokenUsage;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *-->
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AgentWebUIEvent {
+public class WebUIEvent implements Constants {
 
 	/** イベントタイプ */
 	@JsonProperty("type")
@@ -43,9 +45,17 @@ public class AgentWebUIEvent {
 	@JsonProperty("timestamp")
 	private String timestamp;
 
-	/** トークン使用量 */
+	/** トークン使用量(合計) */
 	@JsonProperty("tokenUsage")
 	private Long tokenUsage;
+
+	/** 入力トークン数 */
+	@JsonProperty("inputTokens")
+	private Long inputTokens;
+
+	/** 出力トークン数 */
+	@JsonProperty("outputTokens")
+	private Long outputTokens;
 
 	/** 処理時間 */
 	@JsonProperty("elapsedTime")
@@ -62,7 +72,7 @@ public class AgentWebUIEvent {
 	/**
 	 * コンストラクタ<br>
 	 */
-	private AgentWebUIEvent() {
+	private WebUIEvent() {
 	}
 
 	/**
@@ -106,11 +116,27 @@ public class AgentWebUIEvent {
 	}
 
 	/**
-	 * トークン使用量を取得します。<br>
-	 * @return トークン使用量
+	 * トークン使用量(合計)を取得します。<br>
+	 * @return トークン使用量(合計)
 	 */
 	public Long getTokenUsage() {
 		return tokenUsage;
+	}
+
+	/**
+	 * 入力トークン数を取得します。<br>
+	 * @return 入力トークン数
+	 */
+	public Long getInputTokens() {
+		return inputTokens;
+	}
+
+	/**
+	 * 出力トークン数を取得します。<br>
+	 * @return 出力トークン数
+	 */
+	public Long getOutputTokens() {
+		return outputTokens;
 	}
 
 	/**
@@ -142,9 +168,9 @@ public class AgentWebUIEvent {
 	 * @param agents エージェントリスト
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentInitialized(List<Agent> agents) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_initialized";
+	public static WebUIEvent createAgentInitialized(List<Agent> agents) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_INITIALIZED;
 		e.agents = agents;
 		return e;
 	}
@@ -156,9 +182,9 @@ public class AgentWebUIEvent {
 	 * @param timestamp タイムスタンプ
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentStart(String agentName, String sessionId, String timestamp) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_start";
+	public static WebUIEvent createAgentStart(String agentName, String sessionId, String timestamp) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_START;
 		e.agentName = agentName;
 		e.sessionId = sessionId;
 		e.timestamp = timestamp;
@@ -171,9 +197,9 @@ public class AgentWebUIEvent {
 	 * @param content コンテンツ
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentContent(String agentName, String content) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_content";
+	public static WebUIEvent createAgentContent(String agentName, String content) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_CONTENT;
 		e.agentName = agentName;
 		e.content = content;
 		return e;
@@ -185,9 +211,9 @@ public class AgentWebUIEvent {
 	 * @param message メッセージ
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentMessage(String agentName, String message) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_message";
+	public static WebUIEvent createAgentMessage(String agentName, String message) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_MESSAGE;
 		e.agentName = agentName;
 		e.message = message;
 		return e;
@@ -201,12 +227,32 @@ public class AgentWebUIEvent {
 	 * @param elapsedTime 処理時間
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentFinish(String agentName, String sessionId, long tokenUsage, long elapsedTime) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_finish";
+	public static WebUIEvent createAgentFinish(String agentName, String sessionId, long tokenUsage, long elapsedTime) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_FINISH;
 		e.agentName = agentName;
 		e.sessionId = sessionId;
 		e.tokenUsage = tokenUsage;
+		e.elapsedTime = elapsedTime;
+		return e;
+	}
+
+	/**
+	 * エージェント処理完了イベント(agent_finish)を生成します。<br>
+	 * @param agentName エージェント名
+	 * @param sessionId セッションID
+	 * @param usage トークン使用量
+	 * @param elapsedTime 処理時間
+	 * @return エージェント処理モニタリングイベント
+	 */
+	public static WebUIEvent createAgentFinish(String agentName, String sessionId, TokenUsage usage, long elapsedTime) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_FINISH;
+		e.agentName = agentName;
+		e.sessionId = sessionId;
+		e.tokenUsage = usage != null ? usage.getTotalTokens() : 0L;
+		e.inputTokens = usage != null ? usage.getInputTokens() : 0L;
+		e.outputTokens = usage != null ? usage.getOutputTokens() : 0L;
 		e.elapsedTime = elapsedTime;
 		return e;
 	}
@@ -217,11 +263,25 @@ public class AgentWebUIEvent {
 	 * @param message エラーメッセージ
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createAgentError(String agentName, String message) {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "agent_error";
+	public static WebUIEvent createAgentError(String agentName, String message) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_ERROR;
 		e.agentName = agentName;
 		e.message = message;
+		return e;
+	}
+
+	/**
+	 * エージェントセッションID更新イベント(agent_session_updated)を生成します。<br>
+	 * @param agentName エージェント名
+	 * @param sessionId セッションID
+	 * @return エージェント処理モニタリングイベント
+	 */
+	public static WebUIEvent createAgentSessionUpdated(String agentName, String sessionId) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_AGENT_SESSION_UPDATED;
+		e.agentName = agentName;
+		e.sessionId = sessionId;
 		return e;
 	}
 
@@ -229,9 +289,9 @@ public class AgentWebUIEvent {
 	 * オーケストレーター処理完了イベント(orchestrator_done)を生成します。<br>
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createOrchestratorDone() {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "orchestrator_done";
+	public static WebUIEvent createOrchestratorDone() {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_ORCHESTRATOR_DONE;
 		return e;
 	}
 
@@ -239,9 +299,9 @@ public class AgentWebUIEvent {
 	 * オーケストレーター開始イベント(orchestrator_started)を生成します。<br>
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createOrchestratorStarted() {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "orchestrator_started";
+	public static WebUIEvent createOrchestratorStarted() {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_ORCHESTRATOR_STARTED;
 		return e;
 	}
 
@@ -249,9 +309,9 @@ public class AgentWebUIEvent {
 	 * オーケストレーター停止イベント(orchestrator_stopped)を生成します。<br>
 	 * @return エージェント処理モニタリングイベント
 	 */
-	public static AgentWebUIEvent createOrchestratorStopped() {
-		AgentWebUIEvent e = new AgentWebUIEvent();
-		e.type = "orchestrator_stopped";
+	public static WebUIEvent createOrchestratorStopped() {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_ORCHESTRATOR_STOPPED;
 		return e;
 	}
 }

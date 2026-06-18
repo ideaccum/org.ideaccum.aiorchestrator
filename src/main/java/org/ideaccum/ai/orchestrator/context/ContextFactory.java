@@ -4,7 +4,7 @@ import java.nio.file.Files;
 
 import org.ideaccum.ai.orchestrator.Constants;
 import org.ideaccum.ai.orchestrator.agent.AgentFactory;
-import org.ideaccum.ai.orchestrator.webui.AgentWebUIServer;
+import org.ideaccum.ai.orchestrator.webui.WebUIServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 public class ContextFactory implements Constants {
 
 	/** ロガーオブジェクト */
-	private static final Logger log = LoggerFactory.getLogger(AgentWebUIServer.class);
+	private static final Logger log = LoggerFactory.getLogger(WebUIServer.class);
 
 	/** 環境定義情報 */
 	private Config config;

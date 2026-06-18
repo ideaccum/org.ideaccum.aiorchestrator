@@ -16,10 +16,11 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Multi Agent Controller</title>
-		<link rel="icon" href="image/favicon.ico" type="image/x-icon">
+		<link rel="icon" href="image/favicon.ico" type="image/x-icon" />
 		<link rel="stylesheet" href="css/theme.css" />
 		<link rel="stylesheet" href="css/common.css" />
 		<link rel="stylesheet" href="css/layout.css" />
+		<link rel="stylesheet" href="css/icons.css" />
 		<link rel="stylesheet" href="agent_setting.css" />
 	</head>
 	<body>
@@ -34,7 +35,7 @@
 			<nav class="header-nav">
 				<a href="/webui/project_setting.html" class="header-nav-item">プロジェクト</a>
 				<a href="/webui/agent_setting.html" class="header-nav-item header-nav-requires-project header-nav-active">エージェント</a>
-				<a href="/webui/process_controller.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
+				<a href="/webui/process_monitor.html" class="header-nav-item header-nav-requires-project">コントローラー</a>
 				<a href="/webui/log_view.html" class="header-nav-item header-nav-requires-project">ログ</a>
 				<a href="/webui/config_setting.html" class="header-nav-item">設定</a>
 			</nav>
@@ -43,23 +44,29 @@
 
 		<!-- ノーティスバー -->
 		<div id="page-notice" class="page-notice">
-			<div id="notice-spinner" class="loading-spinner"></div>
+			<div id="notice-spinner" class="loading-spinner loading-spinner-sm"></div>
 			<span id="notice-text"></span>
 		</div>
 
 		<!-- 切断状態パネル -->
 		<div class="disconnected-panel">
 			<div class="loading-spinner"></div>
-			<span>サーバーとの接続が切断されました<br>再接続を待機しています</span>
+			<span>サーバーとの接続が切断されました<br />再接続を待機しています</span>
 		</div>
 
 		<!-- エラー表示パネル -->
-		<div id="page-message-error" class="page-message-error" style="display: none"></div>
+		<div id="page-message-error" class="page-message-error hidden"></div>
 		<!-- 警告メッセージパネル -->
-		<div id="page-message-warn" class="page-message-warn" style="display: none"></div>
+		<div id="page-message-warn" class="page-message-warn hidden"></div>
 		<!-- 情報メッセージパネル -->
-		<div id="page-message-info" class="page-message-info" style="display: none"></div>
+		<div id="page-message-info" class="page-message-info hidden"></div>
 
+		<!-- ページヘッダー -->
+		<!--
+		<div class="content-header">
+			<span class="content-title"></span>
+		</div>
+		-->
 
 		<!-- メインコンテンツ(左右分割パネル) -->
 		<div class="split-layout">
@@ -67,7 +74,7 @@
 			<div class="split-left">
 				<div class="split-left-header">
 					<span class="split-left-title">エージェント一覧</span>
-					<button id="btn-new" class="btn btn-icon btn-primary" title="追加"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg></button>
+					<button id="btn-new" class="btn btn-icon btn-primary" title="追加"><span class="icon icon-plus"></span></button>
 				</div>
 				<div id="agents-list" class="split-left-body scrollbar-thin"></div>
 			</div>
@@ -75,9 +82,9 @@
 			<!-- 右パネル(エージェント設定) -->
 			<div class="split-right">
 				<!-- 右ペインヘッダー -->
-				<div id="agent-form-header" class="content-header" style="display: none">
+				<div id="agent-form-header" class="content-header hidden">
 					<div class="form-header-leading">
-						<span id="session-exists-note" class="form-header-note" style="display: none">既にセッションが存在するため変更するため、一部の項目は変更することができません</span>
+						<span id="session-exists-note" class="form-header-note hidden">既にセッションが存在するため変更するため、一部の項目は変更することができません</span>
 					</div>
 					<div class="btn-row">
 						<button id="btn-save" type="button" class="btn btn-primary">保存</button>
@@ -90,11 +97,11 @@
 				</div>
 
 				<!-- エージェント設定フォーム -->
-				<div id="agent-form-panel" class="form-panel scrollbar-thin" style="display: none">
+				<div id="agent-form-panel" class="form-panel scrollbar-thin hidden">
 					<div class="form-section-label">エージェント情報</div>
 					<div class="form-row">
 						<label class="form-label" for="field-name">エージェント名</label>
-						<input id="field-name" class="input-field" type="text" placeholder="例: Planner" maxlength="32"/>
+						<input id="field-name" class="input-field" type="text" placeholder="例: Planner" maxlength="32" />
 					</div>
 
 					<div class="form-row">
@@ -102,6 +109,7 @@
 						<select id="field-type" class="input-field form-select">
 							<option value="claude-cli">claude-cli</option>
 							<option value="gemini-cli">gemini-cli</option>
+							<option value="antigravity-cli">antigravity-cli (2026.06.15：利用できません(JSON形式レスポンスオプション非対応))</option>
 							<option value="codex-cli">codex-cli</option>
 							<option value="copilot-cli">copilot-cli</option>
 						</select>
@@ -109,12 +117,12 @@
 
 					<div class="form-row">
 						<label class="form-label" for="field-model">モデル</label>
-						<input id="field-model" class="input-field" type="text" placeholder="省略時はデフォルト（例: sonnet, opus, haiku）" maxlength="32"/>
+						<input id="field-model" class="input-field" type="text" placeholder="省略時はデフォルト（例: sonnet, opus, haiku）" maxlength="32" />
 					</div>
 
 					<div class="form-row">
 						<label class="form-label" for="field-extra-args">追加引数</label>
-						<input id="field-extra-args" class="input-field" type="text" placeholder="省略可（例: --flag value）" maxlength="128"/>
+						<input id="field-extra-args" class="input-field" type="text" placeholder="省略可（例: --flag value）" maxlength="128" />
 					</div>
 
 					<div class="form-row form-row-check">
@@ -126,7 +134,7 @@
 
 					<div class="form-row">
 						<label class="form-label" for="field-role">役割名</label>
-						<input id="field-role" class="input-field" type="text" placeholder="例: 進行計画・進行管理" maxlength="80"/>
+						<input id="field-role" class="input-field" type="text" placeholder="例: 進行計画・進行管理" maxlength="80" />
 					</div>
 
 					<div class="form-row">
@@ -136,9 +144,8 @@
 
 					<div id="form-row-session-id" class="form-row">
 						<label class="form-label" for="field-session-id">セッションID</label>
-						<input id="field-session-id" class="input-field-readonly" type="text" readonly placeholder="(未設定)"/>
+						<input id="field-session-id" class="input-field-readonly" type="text" readonly placeholder="(未設定)" />
 					</div>
-
 				</div>
 			</div>
 		</div>
@@ -147,16 +154,21 @@
 		<script src="lib/marked/marked-12.0.2.min.js"></script>
 		<script src="js/constants.js"></script>
 		<script src="js/utils.js"></script>
+		<script src="js/webui.js"></script>
 		<script src="js/webapi.js"></script>
-		<script src="js/content.js"></script>
-		<script src="js/header.js"></script>
+		<script src="js/webctrl.js"></script>
+		<script src="js/page.js"></script>
 		<script src="agent_setting.js"></script>
 		<script>
-			Promise.all([
-				new ContentController().init(),
-				new HeaderController().init(),
-				new AgentSettingController().init(),
-			]).finally(() => Utils.hideBootOverlay());
+			Utils.init().then(() => {
+				WebUI.init();
+				return Promise.all([
+					new PageController().init(), //
+					new AgentSettingController().init(), //
+				]).finally(() => {
+					WebUI.hideOverlay();
+				});
+			});
 		</script>
 	</body>
 </html>

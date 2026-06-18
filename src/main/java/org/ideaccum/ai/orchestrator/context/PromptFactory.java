@@ -56,12 +56,12 @@ public class PromptFactory implements Constants {
 	}
 
 	/**
-	 * エージェントに対するプロンプトを生成します。<br>
+	 * エージェントに対する会話開始プロンプトを生成します。<br>
 	 * プロンプト内容はエージェント役割、会話履歴などから動的に生成されます。<br>
 	 * @param agent エージェントオブジェクト
 	 * @return プロンプトコンテンツ
 	 */
-	public String create(Agent agent) {
+	public String createStart(Agent agent) {
 		/*
 		 * Velocityコンテキスト生成
 		 */
@@ -82,12 +82,16 @@ public class PromptFactory implements Constants {
 		if (session == null) {
 			// セッションが存在しない場合は全会話履歴設定
 			history = context.getConversations().getAllHistory();
+			if (history == null || history.isBlank()) {
+				// 会話ログが本当に存在しない場合
+				history = AGENT_PROMPT_HISTORY_NO_LOG;
+			}
 		} else {
 			// セッションが存在する場合は未読会話履歴設定
 			history = context.getConversations().getUnreadHistory(agent);
-		}
-		if (history == null || history.isBlank()) {
-			history = "**会話ログは存在しません**";
+			if (history == null || history.isBlank()) {
+				history = AGENT_PROMPT_HISTORY_SESSION_CONTINUE;
+			}
 		}
 		velocityContext.put("history", history);
 
@@ -96,14 +100,38 @@ public class PromptFactory implements Constants {
 		 */
 		StringBuilder builder = new StringBuilder();
 		if (session == null) {
-			builder.append(build(velocityContext, "prompt/start-prompt.vm"));
+			builder.append(build(velocityContext, RESOURCE_TEMPLATE_START_PROMPT));
 			if (agent.isLeader()) {
 				builder.append("\n");
-				builder.append(build(velocityContext, "prompt/leader-prompt.vm"));
+				builder.append(build(velocityContext, RESOURCE_TEMPLATE_LEADER_PROMPT));
 			}
 		} else {
-			builder.append(build(velocityContext, "prompt/continue-prompt.vm"));
+			builder.append(build(velocityContext, RESOURCE_TEMPLATE_CONTINUE_PROMPT));
 		}
+
+		return builder.toString();
+	}
+
+	/**
+	 * エージェントに対するリトライプロンプトを生成します。<br>
+	 * キーワード未出力時にエージェントへ再指示するためのプロンプトを生成します。<br>
+	 * @param agent エージェントオブジェクト
+	 * @return リトライプロンプトコンテンツ
+	 */
+	public String createRetry(Agent agent) {
+		/*
+		 * Velocityコンテキスト生成
+		 */
+		VelocityContext velocityContext = new VelocityContext();
+		velocityContext.put("context", context);
+		velocityContext.put("agent", agent);
+		velocityContext.put("config", context.getConfig());
+
+		/*
+		 * エージェント向けプロンプト生成
+		 */
+		StringBuilder builder = new StringBuilder();
+		builder.append(build(velocityContext, RESOURCE_TEMPLATE_RETRY_PROMPT));
 
 		return builder.toString();
 	}

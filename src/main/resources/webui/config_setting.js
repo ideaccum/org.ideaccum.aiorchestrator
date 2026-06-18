@@ -18,7 +18,7 @@ class ConfigSettingController {
 	constructor() {
 		try {
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -37,7 +37,7 @@ class ConfigSettingController {
 			 */
 			document.getElementById("btn-save").onclick = () => this.#onClickSave();
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -46,25 +46,38 @@ class ConfigSettingController {
 	 */
 	async #loadConfig() {
 		try {
-			const result = await WebAPI.getConfig({ _: null }, false);
-			if (!result) {
-				return;
-			}
-			const config = result.data?.config;
-			if (!config) {
-				return;
-			}
-			document.getElementById("field-theme").value = config.theme || "dark";
-			document.getElementById("field-repository-path").value = config.repositoryPath || "";
-			document.getElementById("field-webui-port").value = config.webuiPort || "";
-			document.getElementById("field-webui-connection").value = config.webuiConnection || "";
-			document.getElementById("field-agent-timeout").value = config.agentTimeout || "";
-			document.getElementById("field-cli-claude").value = config.cliClaudeCommand || "";
-			document.getElementById("field-cli-gemini").value = config.cliGeminiCommand || "";
-			document.getElementById("field-cli-codex").value = config.cliCodexCommand || "";
-			document.getElementById("field-cli-copilot").value = config.cliCopilotCommand || "";
+			/*
+			 * サーバーサイド処理
+			 */
+			await WebCtrl.doAwait(WebAPI.getConfig({}), {
+				onDone: async (result) => {
+					/*
+					 * 環境設定情報フォーム反映
+					 */
+					const config = result.data?.config;
+					if (!config) {
+						return;
+					}
+					document.getElementById("field-theme").value = config.theme || "dark";
+					document.getElementById("field-repository-path").value = config.repositoryPath || "";
+					document.getElementById("field-webui-port").value = config.webuiPort || "";
+					document.getElementById("field-webui-connection").value = config.webuiConnection || "";
+					document.getElementById("field-agent-timeout").value = config.agentTimeout || "";
+					document.getElementById("field-cli-claude").value = config.cliClaudeCommand || "";
+					document.getElementById("field-cli-gemini").value = config.cliGeminiCommand || "";
+					document.getElementById("field-cli-antigravity").value = config.cliAntigravityCommand || "";
+					document.getElementById("field-cli-codex").value = config.cliCodexCommand || "";
+					document.getElementById("field-cli-copilot").value = config.cliCopilotCommand || "";
+				},
+				onError: () => {
+					/*
+					 * エラー表示
+					 */
+					WebUI.showError("環境設定情報の取得に失敗しました。");
+				},
+			});
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 
@@ -73,38 +86,54 @@ class ConfigSettingController {
 	 */
 	async #onClickSave() {
 		try {
-			Utils.clearError();
-			Utils.clearInfo();
-
-			const result = await WebAPI.saveConfig({
-				theme: document.getElementById("field-theme").value,
-				repositoryPath: document.getElementById("field-repository-path").value.trim(),
-				webuiPort: document.getElementById("field-webui-port").value.trim(),
-				webuiConnection: document.getElementById("field-webui-connection").value.trim(),
-				agentTimeout: document.getElementById("field-agent-timeout").value.trim(),
-				cliClaudeCommand: document.getElementById("field-cli-claude").value.trim(),
-				cliGeminiCommand: document.getElementById("field-cli-gemini").value.trim(),
-				cliCodexCommand: document.getElementById("field-cli-codex").value.trim(),
-				cliCopilotCommand: document.getElementById("field-cli-copilot").value.trim(),
-			});
-			if (!result) {
-				return;
-			}
-
-			if (result.message) {
-				Utils.showInfo(result.message);
-			}
-
 			/*
-			 * theme.cssを再読み込みしてテーマ変更を即時反映
+			 * サーバーサイド処理
 			 */
-			const themeLink = document.querySelector('link[href*="theme.css"]');
-			if (themeLink) {
-				const base = themeLink.href.split("?")[0];
-				themeLink.href = base + "?t=" + Date.now();
-			}
+			await WebCtrl.doAsync(
+				WebAPI.saveConfig({
+					theme: document.getElementById("field-theme").value, // テーマ
+					repositoryPath: document.getElementById("field-repository-path").value.trim(), // リポジトリパス
+					webuiPort: document.getElementById("field-webui-port").value.trim(), // WebUIポート番号
+					webuiConnection: document.getElementById("field-webui-connection").value.trim(), // WebUI同時接続数
+					agentTimeout: document.getElementById("field-agent-timeout").value.trim(), // エージェントタイムアウト(秒)
+					cliClaudeCommand: document.getElementById("field-cli-claude").value.trim(), // Claude CLIコマンドパス
+					cliGeminiCommand: document.getElementById("field-cli-gemini").value.trim(), // Gemini CLIコマンドパス
+					cliAntigravityCommand: document.getElementById("field-cli-antigravity").value.trim(), // Antigravity CLIコマンドパス
+					cliCodexCommand: document.getElementById("field-cli-codex").value.trim(), // Codex CLIコマンドパス
+					cliCopilotCommand: document.getElementById("field-cli-copilot").value.trim(), // Copilot CLIコマンドパス
+				}),
+				{
+					cancellable: false,
+					onDone: async (result) => {
+						/*
+						 * メッセージ表示
+						 */
+						if (result?.message) {
+							WebUI.showInfo(result.message);
+						}
+
+						/*
+						 * テーマCSS更新(キャッシュクリア)
+						 */
+						const themeLink = document.querySelector('link[href*="theme.css"]');
+						if (themeLink) {
+							const base = themeLink.href.split("?")[0];
+							themeLink.href = base + "?_t=" + Date.now();
+						}
+					},
+					onError: (message) => {
+						/*
+						 * エラー表示
+						 */
+						WebUI.showError(message || "保存に失敗しました。");
+					},
+					onCancelled: () => {
+						// キャンセル処理なし
+					},
+				},
+			);
 		} catch (e) {
-			Utils.catchFatal(e);
+			WebUI.catchFatal(e);
 		}
 	}
 }

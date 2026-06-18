@@ -21,7 +21,7 @@ import org.ideaccum.ai.orchestrator.context.Config;
 import org.ideaccum.ai.orchestrator.context.Context;
 import org.ideaccum.ai.orchestrator.context.TokenUsage;
 import org.ideaccum.ai.orchestrator.util.OutputUtils;
-import org.ideaccum.ai.orchestrator.webui.AgentWebUIEventController;
+import org.ideaccum.ai.orchestrator.webui.WebUIController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +60,12 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 
 	/** トークン使用量 */
 	private TokenUsage tokenUsage;
+
+	/** CLIプロセス */
+	private volatile Process process;
+
+	/** CLIプロセススレッド実行オブジェクト */
+	private volatile ExecutorService executor;
 
 	/**
 	 * コンストラクタ<br>
@@ -287,7 +293,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			 */
 			Map<String, String> environment = buildEnvironmentMap();
 			ProcessBuilder builder = new ProcessBuilder(cmdListFinal);
-			builder.directory(context.getConfig().getApplicationProjectPath(context.getProjectName()).toFile());
+			builder.directory(context.getAgentRootPath().toFile());
 			builder.redirectErrorStream(true);
 			builder.redirectInput(promptTemporaryFile.toFile());
 			if (environment != null) {
@@ -298,14 +304,14 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			 * コマンドプロセス実行
 			 */
 			long start = System.currentTimeMillis();
-			Process process = builder.start();
+			process = builder.start();
 
 			/*
 			 * コマンドレスポンス処理
 			 */
 			StringBuilder result = new StringBuilder();
 			AtomicBoolean lookupedError = new AtomicBoolean(false);
-			ExecutorService executor = Executors.newSingleThreadExecutor();
+			executor = Executors.newSingleThreadExecutor();
 			executor.submit(() -> {
 				try (InputStream is = process.getInputStream(); InputStreamReader isr = new InputStreamReader(is); BufferedReader reader = new BufferedReader(isr)) {
 					for (String response; (response = reader.readLine()) != null;) {
@@ -323,7 +329,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 						 */
 						String error = lookupError(response);
 						if (error != null) {
-							AgentWebUIEventController.instance().publishError(getName(), error);
+							WebUIController.instance().publishError(getName(), error);
 							lookupedError.set(true);
 							continue;
 						}
@@ -332,7 +338,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 						 * 実行進捗メッセージ取得
 						 */
 						String progress = lookupProgress(response);
-						AgentWebUIEventController.instance().publishMessage(getName(), progress);
+						WebUIController.instance().publishMessage(getName(), progress);
 
 						/*
 						 * レスポンス内容がJSONでない場合はスキップ
@@ -352,6 +358,8 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 						String sessionId = lookupSessionId(response);
 						if (sessionId != null && !sessionId.isBlank()) {
 							this.sessionId = sessionId;
+							context.getSessions().add(getName(), sessionId, null);
+							WebUIController.instance().publishSessionUpdated(getName(), sessionId);
 						}
 
 						/*
@@ -380,19 +388,20 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			executor.shutdown();
 			if (!finished) {
 				process.destroyForcibly();
+				executor.shutdownNow();
 				String timeoutMessage = "タイムアウト(" + context.getConfig().getAgentTimeout() + "秒)";
-				AgentWebUIEventController.instance().publishError(getName(), timeoutMessage);
+				WebUIController.instance().publishError(getName(), timeoutMessage);
 				return AgentResult.error(getName(), timeoutMessage);
 			}
 
-			// プロセス終了後もリーダースレッドが最終チャンクを result に書き込み中の場合があるため完了を待機する
-			executor.awaitTermination(10, TimeUnit.SECONDS);
+			// プロセス終了後もリーダースレッドが最終チャンクをresultに書き込み中の場合があるため完了を待機する
+			executor.awaitTermination(PROCESS_AWAIT_TERMINATION_SECONDS, TimeUnit.SECONDS);
 
 			// プロセス異常終了かつ出力からエラーを検出していない場合はエラー通知
 			int exitCode = process.exitValue();
 			if (exitCode != 0 && !lookupedError.get() && result.length() == 0) {
 				String exitMessage = "エージェントプロセスが異常終了しました(終了コード: " + exitCode + ")";
-				AgentWebUIEventController.instance().publishError(getName(), exitMessage);
+				WebUIController.instance().publishError(getName(), exitMessage);
 				return AgentResult.error(getName(), exitMessage);
 			}
 
@@ -400,14 +409,34 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 			return AgentResult.success(getName(), result.toString(), elapsed, tokenUsage);
 		} catch (Throwable e) {
 			Thread.currentThread().interrupt();
-			AgentWebUIEventController.instance().publishError(getName(), e.getMessage());
+			WebUIController.instance().publishError(getName(), e.getMessage());
 			return AgentResult.error(getName(), e.getMessage());
 		} finally {
+			process = null;
+			executor = null;
 			try {
 				Files.deleteIfExists(promptTemporaryFile);
 			} catch (Throwable e) {
 				// テンポラリファイル削除例外は無視
 			}
+		}
+	}
+
+	/**
+	 * 実行中のCLIプロセスを強制終了します。<br>
+	 * プロセスが起動していない場合は何もしません。<br>
+	 * @see org.ideaccum.ai.orchestrator.agent.Agent#stop()
+	 */
+	@Override
+	public void stop() {
+		if (process != null) {
+			// プロセスツリー全体を強制終了
+			process.toHandle().descendants().forEach(ProcessHandle::destroyForcibly);
+			process.destroyForcibly();
+			log.debug("エージェントプロセスを強制終了しました(" + getName() + ")。");
+		}
+		if (executor != null) {
+			executor.shutdownNow();
 		}
 	}
 }

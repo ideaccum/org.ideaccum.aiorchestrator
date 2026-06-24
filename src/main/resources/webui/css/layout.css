@@ -678,6 +678,11 @@ body:not(.has-project) .header-nav-requires-project {
 .list-item-copy-btn:hover {
 	color: var(--color-accent);
 }
+.list-item-copy-btn:disabled {
+	opacity: var(--opacity-disabled);
+	cursor: not-allowed;
+	pointer-events: none;
+}
 /* ---- アイテム内削除ボタン ---- */
 .list-item-delete-btn {
 	flex-shrink: 0;
@@ -694,10 +699,9 @@ body:not(.has-project) .header-nav-requires-project {
 	color: var(--color-error);
 }
 .list-item-delete-btn:disabled {
-	display: none;
-}
-.list-item-delete-btn:disabled {
-	display: none;
+	opacity: var(--opacity-disabled);
+	cursor: not-allowed;
+	pointer-events: none;
 }
 /* ---- 新規作成 ---- */
 .list-item.new-item {
@@ -1056,6 +1060,10 @@ body:not(.has-project) .header-nav-requires-project {
 	aspect-ratio: 1;
 	background: none;
 	color: var(--color-text-sub);
+}
+.btn-icon:disabled {
+	opacity: var(--opacity-disabled);
+	cursor: not-allowed;
 }
 /* ---- ボタン横並び配置行 ---- */
 .btn-row {

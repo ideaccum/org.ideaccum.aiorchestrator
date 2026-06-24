@@ -16,12 +16,16 @@ class PageController {
 	/** EventSourceインスタンス */
 	#eventSource;
 
+	/** 実行中インジケータータイマー */
+	#runningTimer;
+
 	/**
 	 * コンストラクタ<br>
 	 */
 	constructor() {
 		try {
 			this.#eventSource = null;
+			this.#runningTimer = null;
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -83,6 +87,8 @@ class PageController {
 				this.#onSseOrchestratorDone(data);
 			} else if (data.type === Constants.SSE_TYPE_ORCHESTRATOR_STOPPED) {
 				this.#onSseOrchestratorStopped(data);
+			} else if (data.type === Constants.SSE_TYPE_PROJECT_CHANGED) {
+				this.#onSseProjectChanged(data);
 			}
 		} catch (e) {
 			WebUI.catchFatal(e);
@@ -103,7 +109,7 @@ class PageController {
 				return;
 			}
 			await this.#display();
-			this.#notice({ spinner: false, notice: "サーバーと接続されました。" });
+			this.#notice({ notice: "サーバーと接続されました。" });
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -115,8 +121,9 @@ class PageController {
 	 */
 	async #onSseDisconnected(data) {
 		try {
+			this.#stopRunningIndicator();
 			document.body.classList.add("disconnected");
-			this.#notice({ spinner: false, notice: "サーバーと接続されていません。" });
+			this.#notice({ notice: "サーバーと接続されていません。" });
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -128,7 +135,8 @@ class PageController {
 	 */
 	async #onSseOrchestratorStarted(data) {
 		try {
-			this.#notice({ spinner: true, notice: "エージェント処理を実行中です..." });
+			this.#startRunningIndicator();
+			this.#notice({ notice: "エージェント処理を実行中です..." });
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -140,7 +148,8 @@ class PageController {
 	 */
 	async #onSseOrchestratorDone(data) {
 		try {
-			this.#notice({ spinner: false, notice: "エージェント処理を開始できる状態です。" });
+			this.#stopRunningIndicator();
+			this.#notice({ notice: "エージェント処理を開始できる状態です。" });
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -152,7 +161,23 @@ class PageController {
 	 */
 	async #onSseOrchestratorStopped(data) {
 		try {
-			this.#notice({ spinner: false, notice: "エージェント処理を開始できる状態です。" });
+			this.#stopRunningIndicator();
+			this.#notice({ notice: "エージェント処理を開始できる状態です。" });
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(project_changed)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	#onSseProjectChanged(data) {
+		try {
+			const projectNameEl = document.getElementById("header-project-name");
+			if (projectNameEl) {
+				projectNameEl.innerHTML = data.projectName ? Constants.ICON_PROJECT + Utils.esc(data.projectName) : "";
+			}
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -248,9 +273,8 @@ class PageController {
 	 * @param {boolean} status.spinner - スピナーを表示するか
 	 * @param {string} status.notice - ノーティスバーの表示テキスト
 	 */
-	#notice({ spinner, notice }) {
+	#notice({ notice }) {
 		try {
-			document.getElementById("notice-spinner")?.classList.toggle("hidden", !spinner);
 			const noticeTextEl = document.getElementById("notice-text");
 			if (noticeTextEl) {
 				noticeTextEl.textContent = notice;
@@ -292,5 +316,33 @@ class PageController {
 				}
 			},
 		});
+	}
+
+	/**
+	 * ブラウザファビコン・タイトルに実行中インジケーターを開始します。<br>
+	 */
+	#startRunningIndicator() {
+		if (this.#runningTimer !== null) {
+			return;
+		}
+		const spinnerChars = Constants.TITLE_SPINNER_FRAMES.join("");
+		const baseTitle = document.title.replace(new RegExp(`^[${spinnerChars}] `), "");
+		let frame = 0;
+		this.#runningTimer = setInterval(() => {
+			document.title = Constants.TITLE_SPINNER_FRAMES[frame % Constants.TITLE_SPINNER_FRAMES.length] + " " + baseTitle;
+			frame++;
+		}, Constants.TITLE_SPINNER_INTERVAL);
+	}
+
+	/**
+	 * ブラウザタイトルの実行中インジケーターを停止します。<br>
+	 */
+	#stopRunningIndicator() {
+		if (this.#runningTimer === null) {
+			return;
+		}
+		clearInterval(this.#runningTimer);
+		this.#runningTimer = null;
+		document.title = "Multi Agent Controller";
 	}
 }

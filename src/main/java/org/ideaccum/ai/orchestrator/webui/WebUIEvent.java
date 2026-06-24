@@ -69,6 +69,10 @@ public class WebUIEvent implements Constants {
 	@JsonProperty("message")
 	private String message;
 
+	/** プロジェクト名 */
+	@JsonProperty("projectName")
+	private String projectName;
+
 	/**
 	 * コンストラクタ<br>
 	 */
@@ -312,6 +316,18 @@ public class WebUIEvent implements Constants {
 	public static WebUIEvent createOrchestratorStopped() {
 		WebUIEvent e = new WebUIEvent();
 		e.type = EVENT_ORCHESTRATOR_STOPPED;
+		return e;
+	}
+
+	/**
+	 * プロジェクト変更イベント(project_changed)を生成します。<br>
+	 * @param projectName 変更後のプロジェクト名
+	 * @return エージェント処理モニタリングイベント
+	 */
+	public static WebUIEvent createProjectChanged(String projectName) {
+		WebUIEvent e = new WebUIEvent();
+		e.type = EVENT_PROJECT_CHANGED;
+		e.projectName = projectName;
 		return e;
 	}
 }

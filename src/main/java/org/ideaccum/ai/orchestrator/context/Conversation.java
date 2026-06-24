@@ -49,6 +49,10 @@ public class Conversation implements Constants, Serializable {
 	@JsonProperty
 	private TokenUsage tokenUsage;
 
+	/** 実行時間(ms) */
+	@JsonProperty
+	private long elapsedTimeMs;
+
 	/**
 	 * コンストラクタ<br>
 	 * @param context コンテキストオブジェクト
@@ -56,14 +60,16 @@ public class Conversation implements Constants, Serializable {
 	 * @param agentName エージェント名
 	 * @param content 会話内容
 	 * @param tokenUsage トークン使用量
+	 * @param elapsedTimeMs 実行時間(ms)
 	 */
-	public Conversation(Context context, String timestamp, String agentName, String content, TokenUsage tokenUsage) {
+	public Conversation(Context context, String timestamp, String agentName, String content, TokenUsage tokenUsage, long elapsedTimeMs) {
 		super();
 		this.context = context;
 		this.timestamp = timestamp;
 		this.agentName = agentName;
 		this.content = content;
 		this.tokenUsage = tokenUsage;
+		this.elapsedTimeMs = elapsedTimeMs;
 	}
 
 	/**
@@ -72,7 +78,7 @@ public class Conversation implements Constants, Serializable {
 	 */
 	@Deprecated
 	public Conversation() {
-		this(null, null, null, null, null);
+		this(null, null, null, null, null, 0);
 	}
 
 	/**
@@ -168,6 +174,15 @@ public class Conversation implements Constants, Serializable {
 	public void setTokenUsage(TokenUsage tokenUsage) {
 		this.tokenUsage = tokenUsage;
 	}
+
+	/**
+	 * 実行時間(ms)を取得します。<br>
+	 * @return 実行時間(ms)
+	 */
+	public long getElapsedTimeMs() {
+		return elapsedTimeMs;
+	}
+
 
 	/**
 	 * 会話内容からディスパッチキーワードを抽出して対象エージェントリストを取得します。<br>

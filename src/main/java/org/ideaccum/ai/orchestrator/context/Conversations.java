@@ -117,10 +117,21 @@ public class Conversations implements Constants {
 	 * @param agentName エージェント名
 	 * @param content 発言内容
 	 * @param tokenUsage トークン使用量
+	 * @param elapsedTimeMs 実行時間(ms)
+	 */
+	public void add(String agentName, String content, TokenUsage tokenUsage, long elapsedTimeMs) {
+		entries.add(new Conversation(context, LocalDateTime.now().format(DATE_FORMATETTR_YYYY_MM_DD_HH_MM_SS), agentName, content, tokenUsage, elapsedTimeMs));
+		persist();
+	}
+
+	/**
+	 * エージェント発言ログを追加します。<br>
+	 * @param agentName エージェント名
+	 * @param content 発言内容
+	 * @param tokenUsage トークン使用量
 	 */
 	public void add(String agentName, String content, TokenUsage tokenUsage) {
-		entries.add(new Conversation(context, LocalDateTime.now().format(DATE_FORMATETTR_YYYY_MM_DD_HH_MM_SS), agentName, content, tokenUsage));
-		persist();
+		add(agentName, content, tokenUsage, 0);
 	}
 
 	/**

@@ -165,14 +165,14 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			String type = node.path("type").asString();
 
 			if ("init".equals(type)) {
-				result = "モデルの初期化中です。";
+				result = "エージェントモデルの準備中です。";
 			}
 			if ("message".equals(type)) {
 				if ("user".equals(node.path("role").asString())) {
 					result = "プロンプトを受け付けしました。";
 				}
 				if ("assistant".equals(node.path("role").asString())) {
-					result = "プロンプト実行結果をレスポンス中。";
+					result = "プロンプト実行結果をレスポンス中です。";
 				}
 			}
 			if ("tool_use".equals(type)) {
@@ -213,11 +213,11 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			if ("tool_result".equals(type)) {
 				result = "ツール結果 : " + node.path("output").asString();
 			}
-			if ("result".equals(type)) {
-				result = "処理が完了しました。";
-			}
 			if ("error".equals(type)) {
-				result = "エラー: " + node.path("message").asString();
+				result = "エラー : " + node.path("message").asString();
+			}
+			if ("result".equals(type)) {
+				result = "エージェント処理が完了しました。";
 			}
 
 			// メッセージフック漏れ確認用エラーコンソール出力

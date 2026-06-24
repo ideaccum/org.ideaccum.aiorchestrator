@@ -189,7 +189,7 @@
 	/* ---- 不透明度 ---- */
 	--opacity-hover: 0.85; /* ホバー状態 */
 	--opacity-active: 0.7; /* アクティブ押下状態 */
-	--opacity-disabled: 0.65; /* 非活性状態 */
+	--opacity-disabled: 0.20; /* 非活性状態 */
 
 	/* ---- z-index ---- */
 	--z-boot-overlay: 9999; /* ブートオーバーレイ */

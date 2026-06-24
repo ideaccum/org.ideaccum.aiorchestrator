@@ -156,16 +156,16 @@ public class CodexCliAgent extends AbstractCliAgent {
 				String itemType = item.path("type").asString();
 				if ("command_execution".equals(itemType)) {
 					String command = item.path("command").asString();
-					result = "コマンド実行: " + command;
+					result = "コマンド実行　: " + command;
 				} else if ("web_search".equals(itemType)) {
 					String query = item.path("query").asString();
-					result = "Web検索: " + query;
+					result = "Web検索　: " + query;
 				} else if ("file_change".equals(itemType)) {
 					String query = item.path("query").asString();
-					result = "ファイル変更: " + query;
+					result = "ファイル変更　: " + query;
 				} else if ("todo_list".equals(itemType)) {
 					int total = item.path("items").size();
-					result = "タスクリスト開始: " + total + "件";
+					result = "タスクリスト開始　: " + total + "件";
 				}
 			} else if ("item.updated".equals(type)) {
 				JsonNode item = node.path("item");
@@ -178,7 +178,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 							completed++;
 						}
 					}
-					result = "タスクリスト更新: " + completed + "/" + items.size() + "件完了。";
+					result = "タスクリスト更新　: " + completed + "/" + items.size() + "件完了。";
 				}
 			} else if ("item.completed".equals(type)) {
 				JsonNode item = node.path("item");

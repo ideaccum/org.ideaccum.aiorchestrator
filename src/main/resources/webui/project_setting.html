@@ -44,7 +44,6 @@
 
 		<!-- ノーティスバー -->
 		<div id="page-notice" class="page-notice">
-			<div id="notice-spinner" class="loading-spinner loading-spinner-sm"></div>
 			<span id="notice-text"></span>
 		</div>
 
@@ -127,13 +126,11 @@
 						<label class="form-label" for="project-agent-template-input">エージェントテンプレート</label>
 						<select id="project-agent-template-input" class="input-field form-select">
 							<option value="">(テンプレートなし)</option>
-							<option value="middle">通常タスク向け</option>
-							<option value="light_claude">単純タスク向け(Claude)</option>
-							<option value="light_codex">単純タスク向け(Codex)</option>
-							<option value="light_gemini">単純タスク向け(Gemini)</option>
-							<option value="fullstack">精密タスク向け</option>
-							<option value="discussion">討論タスク向け</option>
-							<option value="programming">プログラミングタスク向け</option>
+							<option value="fullstack">フルスタック</option>
+							<option value="middle">スタンダード</option>
+							<option value="light">ライトウェイト</option>
+							<option value="programming">プログラミング</option>
+							<option value="discussion">討論</option>
 						</select>
 					</div>
 					<div id="form-label-project-ops" class="form-section-label project-edit-section hidden">プロジェクト操作</div>

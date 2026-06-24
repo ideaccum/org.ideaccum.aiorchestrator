@@ -171,7 +171,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 			if ("system".equals(type)) {
 				String subtype = node.path("subtype").asString();
 				if ("thinking_tokens".equals(subtype)) {
-					result = "思考中です。";
+					result = "エージェント思考中です。";
 				}
 				if ("task_updated".equals(subtype)) {
 					result = "内部タスクステータスを更新しました。";
@@ -181,16 +181,40 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 				}
 				if ("task_started".equals(subtype)) {
 					String description = node.path("description").asString();
-					result = "サブタスク開始: " + description;
+					result = "サブタスク開始 : " + description;
 				}
 				if ("task_progress".equals(subtype)) {
 					String description = node.path("description").asString();
-					result = "サブタスク進捗: " + description;
+					result = "サブタスク進捗 : " + description;
 				}
 				if ("task_notification".equals(subtype)) {
 					String status = node.path("status").asString();
 					String summary = node.path("summary").asString();
-					result = "サブタスク(" + status + "): " + summary;
+					result = "サブタスク(" + status + ") : " + summary;
+				}
+				if ("status".equals(subtype)) {
+					String status = node.path("status").asString();
+					String compactResult = node.path("compact_result").asString();
+					if ("compacting".equals(status)) {
+						result = "コンテキストを圧縮しています。";
+					} else if ("success".equals(compactResult)) {
+						result = "コンテキストの圧縮が完了しました。";
+					} else {
+						result = "コンテキスト圧縮関連タスク処理中です。";
+					}
+				}
+				if ("compact_boundary".equals(subtype)) {
+					long preTokens = node.path("compact_metadata").path("pre_tokens").asLong(0);
+					long postTokens = node.path("compact_metadata").path("post_tokens").asLong(0);
+					result = "コンテキスト圧縮 : " + preTokens + " → " + postTokens + "トークン。";
+				}
+				if ("api_retry".equals(subtype)) {
+					int attempt = node.path("attempt").asInt(0);
+					int maxRetries = node.path("max_retries").asInt(0);
+					long delayMs = node.path("retry_delay_ms").asLong(0);
+					String error = node.path("error").asString("");
+					int errorStatus = node.path("error_status").asInt(0);
+					result = "APIリトライ中 (" + attempt + "/" + maxRetries + "回) : " + errorStatus + " " + error + " - " + (delayMs / 1000) + "秒後に再試行。";
 				}
 			}
 			if ("result".equals(type)) {
@@ -207,15 +231,15 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 				}
 				if ("thinking".equals(messageContentType)) {
 					String thinking = node.path("message").path("content").path(0).path("thinking").asString();
-					result = "考慮中: " + thinking;
+					result = "考慮中 : " + thinking;
 				}
 				if ("tool_use".equals(messageContentType)) {
 					String toolName = node.path("message").path("content").path(0).path("name").asString();
-					result = "ツール実行中: " + toolName;
+					result = "ツール実行中 : " + toolName;
 				}
 			}
 			if ("user".equals(type)) {
-				result = "ユーザー指示を確認中です。";
+				result = "ユーザー指示内容を確認中です。";
 			}
 
 			// メッセージフック漏れ確認用エラーコンソール出力

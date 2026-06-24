@@ -24,6 +24,9 @@ class ProjectSettingController {
 	/** 複写元プロジェクト情報(null=複写でない) */
 	#copyProject;
 
+	/** プロジェクト実行中フラグ */
+	#projectRunning;
+
 	/**
 	 * コンストラクタ<br>
 	 */
@@ -33,6 +36,7 @@ class ProjectSettingController {
 			this.#projects = [];
 			this.#editProject = null;
 			this.#copyProject = null;
+			this.#projectRunning = false;
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -43,6 +47,16 @@ class ProjectSettingController {
 	 */
 	async init() {
 		try {
+			/*
+			 * プロジェクト実行状態の初期取得
+			 */
+			await this.#initRunningStatus();
+
+			/*
+			 * SSEイベントハンドラ登録
+			 */
+			document.addEventListener(Constants.SSE_EVENT_NAME, (event) => this.#handleEvent(event.detail));
+
 			/*
 			 * カレントプロジェクトエージェント取得
 			 */
@@ -98,6 +112,9 @@ class ProjectSettingController {
 				document.querySelectorAll(".project-edit-section").forEach((el) => el.classList.remove("hidden"));
 				document.querySelectorAll(".project-template-section").forEach((el) => el.classList.add("hidden"));
 				document.getElementById("btn-select-project").classList.toggle("hidden", this.#editProject.name === this.#currentProject);
+				document.getElementById("btn-select-project").disabled = this.#projectRunning;
+				document.getElementById("btn-clear-session").disabled = this.#projectRunning && this.#editProject.name === this.#currentProject;
+				document.getElementById("btn-download-logs").disabled = this.#projectRunning && this.#editProject.name === this.#currentProject;
 				document.getElementById("project-name-input").value = this.#editProject.name;
 				document.getElementById("project-title-input").value = this.#editProject.title || "";
 				document.getElementById("project-title-input").focus();
@@ -127,6 +144,16 @@ class ProjectSettingController {
 								})
 								.join("")
 						: `<div class="form-row"><span class="input-field-readonly">（なし）</span></div>`;
+
+				/*
+				 * 処理中のアクティブプロジェクトはフォームを読み取り専用にする
+				 */
+				const isActiveLocked = this.#projectRunning && this.#editProject.name === this.#currentProject;
+				document.getElementById("btn-save-project").disabled = isActiveLocked;
+				document.getElementById("project-name-input").disabled = isActiveLocked;
+				document.getElementById("project-title-input").disabled = isActiveLocked;
+				document.getElementById("project-external-enabled").disabled = isActiveLocked;
+				document.getElementById("project-external-path-input").disabled = isActiveLocked;
 			} else {
 				/*
 				 * 新規/複写モード時初期値設定
@@ -243,10 +270,10 @@ class ProjectSettingController {
 											<span>${(project.totalTokens ?? 0) > 0 ? project.totalTokens.toLocaleString() : "0"} トークン</span>
 										</div>
 									</div>
-									<button class="list-item-copy-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="複写">
+									<button class="list-item-copy-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="複写" ${this.#projectRunning && project.name === this.#currentProject ? "disabled" : ""}>
 										${Constants.ICON_COPY}
 									</button>
-									<button class="list-item-delete-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="削除">
+									<button class="list-item-delete-btn" data-project="${Utils.esc(project.name)}" tabindex="-1" title="削除" ${this.#projectRunning && project.name === this.#currentProject ? "disabled" : ""}>
 										${Constants.ICON_TRASH}
 									</button>
 								`;
@@ -305,6 +332,78 @@ class ProjectSettingController {
 				</div>
 				`;
 			projectListEl.prepend(newItemEl);
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * オーケストレーター実行状態を初期取得します。<br>
+	 */
+	async #initRunningStatus() {
+		try {
+			await WebCtrl.doAwait(WebAPI.getOrchestratorStatus({}, false), {
+				onDone: async (result) => {
+					this.#projectRunning = !!result.data?.running;
+				},
+				onError: () => {},
+			});
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSEイベントをハンドラへディスパッチします。<br>
+	 * @param {{ type: string }} data - パース済みSSEイベント
+	 */
+	#handleEvent(data) {
+		try {
+			if (data.type === Constants.SSE_TYPE_ORCHESTRATOR_STARTED) {
+				this.#onSseOrchestratorStarted(data);
+			} else if (data.type === Constants.SSE_TYPE_ORCHESTRATOR_DONE || data.type === Constants.SSE_TYPE_ORCHESTRATOR_STOPPED) {
+				this.#onSseOrchestratorDone(data);
+			}
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(orchestrator_started)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	async #onSseOrchestratorStarted(data) {
+		try {
+			/*
+			 * オーケストレーター実行状態更新
+			 */
+			this.#projectRunning = true;
+
+			/*
+			 * プロジェクトリスト再読み込み
+			 */
+			await this.#loadProjectList(this.#editProject?.name ?? null);
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * SSE(orchestrator_done/stopped)イベント処理を実行します。<br>
+	 * @param {object} data - SSEイベントデータ
+	 */
+	async #onSseOrchestratorDone(data) {
+		try {
+			/*
+			 * オーケストレーター実行状態更新
+			 */
+			this.#projectRunning = false;
+
+			/*
+			 * プロジェクトリスト再読み込み
+			 */
+			await this.#loadProjectList(this.#editProject?.name ?? null);
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}

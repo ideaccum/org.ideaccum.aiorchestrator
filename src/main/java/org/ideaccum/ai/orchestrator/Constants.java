@@ -79,23 +79,17 @@ public interface Constants {
 	/** リソースパス:エージェントテンプレート(フルスタック) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_FULLSTACK = "/template-agents/fullstack";
 
-	/** リソースパス:エージェントテンプレート(通常タスク) */
+	/** リソースパス:エージェントテンプレート(スタンダード) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_MIDDLE = "/template-agents/middle";
 
-	/** リソースパス:エージェントテンプレート(ライト(Claude)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE = "/template-agents/light-claude";
-
-	/** リソースパス:エージェントテンプレート(ライト(Codex)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_CODEX = "/template-agents/light-codex";
-
-	/** リソースパス:エージェントテンプレート(ライト(Gemini)) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT_GEMINI = "/template-agents/light-gemini";
-
-	/** リソースパス:エージェントテンプレート(討論) */
-	public static final String RESOURCE_TEMPLATE_AGENTS_DISCUSSION = "/template-agents/discussion";
+	/** リソースパス:エージェントテンプレート(ライトウェイト) */
+	public static final String RESOURCE_TEMPLATE_AGENTS_LIGHT = "/template-agents/light";
 
 	/** リソースパス:エージェントテンプレート(プログラミング) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_PROGRAMMING = "/template-agents/programming";
+
+	/** リソースパス:エージェントテンプレート(討論) */
+	public static final String RESOURCE_TEMPLATE_AGENTS_DISCUSSION = "/template-agents/discussion";
 
 	/** プロンプトテンプレート:開始プロンプト */
 	public static final String RESOURCE_TEMPLATE_START_PROMPT = "/prompt/start-prompt.vm";
@@ -235,6 +229,9 @@ public interface Constants {
 
 	/** SSEイベントタイプ:オーケストレーター停止 */
 	public static final String EVENT_ORCHESTRATOR_STOPPED = "orchestrator_stopped";
+
+	/** SSEイベントタイプ:プロジェクト変更 */
+	public static final String EVENT_PROJECT_CHANGED = "project_changed";
 
 	/** WebUI:ベースパス */
 	public static final String WEBUI_BASE_URL = "/webui";

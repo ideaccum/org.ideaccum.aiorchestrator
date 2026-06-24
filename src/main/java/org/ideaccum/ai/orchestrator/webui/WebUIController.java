@@ -92,7 +92,6 @@ public class WebUIController implements Constants {
 			newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentInitialized(sortAgents(agents))) + "\n\n");
 			if (conversations != null && !conversations.isEmpty()) {
 				Map<String, TokenUsage> tokenUsageMap = new LinkedHashMap<>();
-				String prevTimestamp = null;
 				for (Conversation conv : conversations.getAll()) {
 					String agentName = conv.getAgentName();
 					Session session = sessions != null ? sessions.get(agentName) : null;
@@ -101,11 +100,9 @@ public class WebUIController implements Constants {
 					if (conv.getTokenUsage() != null) {
 						tokenUsage.add(conv.getTokenUsage());
 					}
-					long elapsedMs = calcElapsedMs(prevTimestamp, conv.getTimestamp());
-					prevTimestamp = conv.getTimestamp();
 					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp())) + "\n\n");
 					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentContent(agentName, conv.getContent())) + "\n\n");
-					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, elapsedMs)) + "\n\n");
+					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, conv.getElapsedTimeMs())) + "\n\n");
 				}
 				// 過去ログ表示はオーケストレーター処理完了状態送信でアイドル状態に設定
 				newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createOrchestratorDone()) + "\n\n");
@@ -284,7 +281,6 @@ public class WebUIController implements Constants {
 			return;
 		}
 		Map<String, TokenUsage> tokenUsageMap = new LinkedHashMap<>();
-		String prevTimestamp = null;
 		for (Conversation conv : conversations.getAll()) {
 			String agentName = conv.getAgentName();
 			Session session = sessions.get(agentName);
@@ -293,17 +289,20 @@ public class WebUIController implements Constants {
 			if (conv.getTokenUsage() != null) {
 				tokenUsage.add(conv.getTokenUsage());
 			}
-			long elapsedMs = calcElapsedMs(prevTimestamp, conv.getTimestamp());
-			prevTimestamp = conv.getTimestamp();
 			publish(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp()));
 			publish(WebUIEvent.createAgentContent(agentName, conv.getContent()));
-			publish(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, elapsedMs));
+			publish(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, conv.getElapsedTimeMs()));
 		}
 	}
 
 	/**
 	 * オーケストレーター完了イベントを発行します。<br>
 	 */
+	public void publishProjectChanged(String projectName) {
+		log.debug("プロジェクト変更イベントを通知します({})。", projectName);
+		publish(WebUIEvent.createProjectChanged(projectName));
+	}
+
 	public void publishDone() {
 		log.debug("エージェント処理完了イベントを通知します。");
 		publish(WebUIEvent.createOrchestratorDone());
@@ -323,26 +322,6 @@ public class WebUIController implements Constants {
 	public void publishOrchestratorStopped() {
 		log.debug("オーケストレーター停止イベントを通知します。");
 		publish(WebUIEvent.createOrchestratorStopped());
-	}
-
-	/**
-	 * 2つのタイムスタンプ文字列からミリ秒単位の経過時間を計算します。<br>
-	 * パース失敗・前後逆転の場合は 0 を返します。
-	 * @param prevTimestamp 直前のタイムスタンプ
-	 * @param currentTimestamp 現在のタイムスタンプ
-	 * @return 経過時間(ms)
-	 */
-	private static long calcElapsedMs(String prevTimestamp, String currentTimestamp) {
-		if (prevTimestamp == null || currentTimestamp == null) {
-			return 0L;
-		}
-		try {
-			long prev = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(prevTimestamp).getTime();
-			long current = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(currentTimestamp).getTime();
-			return Math.max(0L, current - prev);
-		} catch (Exception e) {
-			return 0L;
-		}
 	}
 
 	/**

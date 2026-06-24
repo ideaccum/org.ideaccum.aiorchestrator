@@ -33,6 +33,12 @@ class Constants {
 	/** API処理中オーバーレイ表示ディレイ(ミリ秒) */
 	static PROCESSING_OVERLAY_DELAY = 500; // 0.5秒
 
+	/** ブラウザタイトル実行中インジケーター: フレーム切替間隔(ミリ秒) */
+	static TITLE_SPINNER_INTERVAL = 80;
+
+	/** ブラウザタイトル実行中インジケーター: スピナーフレーム文字列(ブレイル) */
+	static TITLE_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
 	/** アイコン: ヒント(電球) */
 	static ICON_HINT = '<span class="icon icon-hint"></span>';
 
@@ -107,6 +113,9 @@ class Constants {
 
 	/** SSEイベント(オーケストレーター停止) */
 	static SSE_TYPE_ORCHESTRATOR_STOPPED = "orchestrator_stopped";
+
+	/** SSEイベント(プロジェクト変更) */
+	static SSE_TYPE_PROJECT_CHANGED = "project_changed";
 
 	/** API URL(プロジェクト選択) */
 	static API_SELECT_PROJECT = "/api/select_project";

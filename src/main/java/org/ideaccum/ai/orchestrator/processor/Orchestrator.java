@@ -161,14 +161,14 @@ public class Orchestrator implements Constants {
 					context.getSessions().add(agent.getName(), agent.getSessionId(), result.getUsage());
 
 					// エージェント会話ログ保存(コマンドラインレベルのエラーは記録しない)
+					String response = result.getResponse();
+					long elapsedTime = result.getElapsedTime();
 					if (result.getType() != AgentResultType.ERROR) {
-						context.getConversations().add(agent.getName(), result.getResponse(), result.getUsage());
+						context.getConversations().add(agent.getName(), result.getResponse(), result.getUsage(), elapsedTime);
 					}
 
 					// キーワードなし時リトライ(リトライプロンプト自体は会話ログに保存しない、リトライ応答は保存する)
 					// 停止要求済みの場合はリトライを行わない(新プロセス起動を抑止)
-					String response = result.getResponse();
-					long elapsedTime = result.getElapsedTime();
 					if (!stopSupplier.getAsBoolean() && result.getType() != AgentResultType.ERROR && response != null && !hasControlKeyword(response, context.getConfig())) {
 						String retryPrompt = context.getPromptFactory().createRetry(agent);
 						boolean retrySuccess = false;

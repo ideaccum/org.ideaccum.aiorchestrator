@@ -560,6 +560,7 @@ public class WebUIServer implements Constants {
 			try {
 				context = new ContextFactory(config).create(finalProjectName);
 				WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+				WebUIController.instance().publishProjectChanged(finalProjectName);
 				Map<String, Object> res = new LinkedHashMap<>();
 				res.put("project", finalProjectName);
 				process.setResult(res);
@@ -900,6 +901,14 @@ public class WebUIServer implements Constants {
 			sendApiResponse(exchange, WebUIApiResponse.error("変更元のプロジェクトが見つかりません。"));
 			return;
 		}
+		if (!copyFromProject.isBlank() && isOrchestratorRunning()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント処理中はプロジェクトを複写できません。"));
+			return;
+		}
+		if (!isNew && isOrchestratorRunning() && originalProject.equals(context != null ? context.getProjectName() : null)) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント処理中はアクティブプロジェクトを変更できません。"));
+			return;
+		}
 		if (title.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトタイトルを入力してください。"));
 			return;
@@ -929,6 +938,7 @@ public class WebUIServer implements Constants {
 				try {
 					context = new ContextFactory(config).create(projectName);
 					WebUIController.instance().preloadBuffer(new ArrayList<>(context.getAgents().values()), context.getConversations(), context.getSessions());
+					WebUIController.instance().publishProjectChanged(projectName);
 				} catch (Throwable e) {
 					log.error("リネーム後のコンテキスト再構築に失敗しました。", e);
 					context = null;
@@ -954,12 +964,8 @@ public class WebUIServer implements Constants {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_FULLSTACK;
 			} else if ("middle".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_MIDDLE;
-			} else if ("light_claude".equals(agentTemplate)) {
-				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_CLAUDE;
-			} else if ("light_codex".equals(agentTemplate)) {
-				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_CODEX;
-			} else if ("light_gemini".equals(agentTemplate)) {
-				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT_GEMINI;
+			} else if ("light".equals(agentTemplate)) {
+				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_LIGHT;
 			} else if ("discussion".equals(agentTemplate)) {
 				templateAgentsResource = RESOURCE_TEMPLATE_AGENTS_DISCUSSION;
 			} else if ("programming".equals(agentTemplate)) {
@@ -1146,34 +1152,32 @@ public class WebUIServer implements Constants {
 					JsonNode entriesNode = convNode.isArray() ? convNode : convNode.path("entries");
 					if (entriesNode.isArray() && !entriesNode.isEmpty()) {
 						hasConversations = true;
-						String firstTimestamp = null;
-						String lastTimestamp = null;
+						long totalElapsedMs = 0;
 						for (JsonNode entry : entriesNode) {
 							String agentName = entry.path("agentName").asString("");
-							String timestamp = entry.path("timestamp").asString("");
-							if (!timestamp.isEmpty()) {
-								if (firstTimestamp == null) {
-									firstTimestamp = timestamp;
-								}
-								lastTimestamp = timestamp;
-							}
 							if (!OWNER_AGENT_NAME.equals(agentName)) {
 								turnCount++;
 								JsonNode tokenUsage = entry.path("tokenUsage");
 								long ioTokens = tokenUsage.path("inputTokens").asLong(0) + tokenUsage.path("outputTokens").asLong(0);
 								totalTokens += ioTokens;
 								agentTokenMap.merge(agentName, ioTokens, Long::sum);
+								totalElapsedMs += entry.path("elapsedTimeMs").asLong(0);
 							}
 						}
-						if (firstTimestamp != null && lastTimestamp != null && !firstTimestamp.equals(lastTimestamp)) {
-							try {
-								long first = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(firstTimestamp).getTime();
-								long last = DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.parse(lastTimestamp).getTime();
-								durationSec = (last - first) / 1000;
-							} catch (Throwable ignored) {
-							}
-						}
+						durationSec = totalElapsedMs / 1000;
 					}
+				} catch (Throwable ignored) {
+				}
+			}
+			// プロジェクトに定義されている全エージェントを取得し、未実行分も0トークンで追加
+			Path agentsDir = config.getApplicationAgentsPath(projectName);
+			if (Files.exists(agentsDir)) {
+				try {
+					Files.list(agentsDir).filter(path -> path.toString().endsWith(".properties")).forEach(path -> {
+						String fileName = path.getFileName().toString();
+						String agentName = fileName.substring(0, fileName.length() - ".properties".length());
+						agentTokenMap.putIfAbsent(agentName, 0L);
+					});
 				} catch (Throwable ignored) {
 				}
 			}
@@ -1184,7 +1188,7 @@ public class WebUIServer implements Constants {
 				Map<String, Object> entry = new LinkedHashMap<>();
 				entry.put("name", agentName);
 				entry.put("tokens", e.getValue());
-				Path agentFile = config.getApplicationAgentsPath(projectName).resolve(agentName + ".properties");
+				Path agentFile = agentsDir.resolve(agentName + ".properties");
 				if (Files.exists(agentFile)) {
 					Properties agentProps = new Properties();
 					try (Reader agentReader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(agentFile)), StandardCharsets.UTF_8)) {
@@ -1592,6 +1596,10 @@ public class WebUIServer implements Constants {
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクト名が指定されていません。"));
+			return;
+		}
+		if (isOrchestratorRunning()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント処理中はプロジェクトを削除できません。"));
 			return;
 		}
 
@@ -2010,6 +2018,10 @@ public class WebUIServer implements Constants {
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが指定されていません。"));
+			return;
+		}
+		if (isOrchestratorRunning()) {
+			sendApiResponse(exchange, WebUIApiResponse.error("エージェント処理中はログをダウンロードできません。"));
 			return;
 		}
 

@@ -248,7 +248,7 @@ class ProcessMonitorController {
 				</div>
 				<div class="card-message scrollbar-thin" data-message>リクエストはまだ受け取っていません。</div>
 				<div class="card-footer" data-footer>
-					<span data-tokens>0トークン (IN:0 / OUT:0)</span>
+					<span data-tokens>0トークン</span>
 					<span data-turn-elapsed>0秒</span>
 					<span class="footer-session" data-session>-</span>
 				</div>
@@ -557,11 +557,23 @@ class ProcessMonitorController {
 			/*
 			 * 所要時間タイマー開始(サーバー計測はプロセス完了後のため、クライアント側で1秒ごとに表示更新する)
 			 * リトライ時等で既存タイマーが残っている場合は停止してから再起動する
+			 * ページ再表示時はtimestampから実際のターン開始時刻を復元して経過時間を引き継ぐ
 			 */
 			if (card.elapsedTimer !== null) {
 				clearInterval(card.elapsedTimer);
 			}
-			card.startTimeMs = Date.now();
+			const parsedStartMs = (() => {
+				if (!timestamp) {
+					return null;
+				}
+				const matcher = timestamp.match(/(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+				if (!matcher) {
+					return null;
+				}
+				return new Date(parseInt(matcher[1]), parseInt(matcher[2]) - 1, parseInt(matcher[3]), parseInt(matcher[4]), parseInt(matcher[5]), parseInt(matcher[6])).getTime();
+			})();
+			card.startTimeMs = parsedStartMs ?? Date.now();
+			card.turnElapsedEl.textContent = Utils.formatDurationMs(card.totalElapsedMs + (Date.now() - card.startTimeMs));
 			card.elapsedTimer = setInterval(() => {
 				card.turnElapsedEl.textContent = Utils.formatDurationMs(card.totalElapsedMs + (Date.now() - card.startTimeMs));
 			}, 1000);
@@ -693,7 +705,8 @@ class ProcessMonitorController {
 				card.elapsedTimer = null;
 			}
 			card.totalElapsedMs += Number(elapsedTime || 0);
-			card.tokensEl.textContent = Utils.formatTokenText(agentName, inputTokens, outputTokens);
+			const totalTokens = Number(inputTokens || 0) + Number(outputTokens || 0);
+			card.tokensEl.textContent = totalTokens > 0 ? totalTokens.toLocaleString() + "トークン" : "";
 			card.turnElapsedEl.textContent = card.totalElapsedMs > 0 ? Utils.formatDurationMs(card.totalElapsedMs) : "-";
 
 			/*

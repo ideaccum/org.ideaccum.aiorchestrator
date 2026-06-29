@@ -89,7 +89,7 @@ public class WebUIController implements Constants {
 		log.debug("開始前コントローラー表示用バッファ事前投入を実行します。");
 		List<String> newBuffer = new LinkedList<>();
 		try {
-			newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentInitialized(sortAgents(agents))) + "\n\n");
+			newBuffer.add("data: " + JSON.writeValueAsString(WebUIEvent.createAgentInitialized(sortAgents(agents))) + "\n\n");
 			if (conversations != null && !conversations.isEmpty()) {
 				Map<String, TokenUsage> tokenUsageMap = new LinkedHashMap<>();
 				for (Conversation conv : conversations.getAll()) {
@@ -100,12 +100,12 @@ public class WebUIController implements Constants {
 					if (conv.getTokenUsage() != null) {
 						tokenUsage.add(conv.getTokenUsage());
 					}
-					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp())) + "\n\n");
-					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentContent(agentName, conv.getContent())) + "\n\n");
-					newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, conv.getElapsedTimeMs())) + "\n\n");
+					newBuffer.add("data: " + JSON.writeValueAsString(WebUIEvent.createAgentStart(agentName, sessionId, conv.getTimestamp())) + "\n\n");
+					newBuffer.add("data: " + JSON.writeValueAsString(WebUIEvent.createAgentContent(agentName, conv.getContent())) + "\n\n");
+					newBuffer.add("data: " + JSON.writeValueAsString(WebUIEvent.createAgentFinish(agentName, sessionId, tokenUsage, conv.getElapsedTimeMs())) + "\n\n");
 				}
 				// 過去ログ表示はオーケストレーター処理完了状態送信でアイドル状態に設定
-				newBuffer.add("data: " + MAPPER.writeValueAsString(WebUIEvent.createOrchestratorDone()) + "\n\n");
+				newBuffer.add("data: " + JSON.writeValueAsString(WebUIEvent.createOrchestratorDone()) + "\n\n");
 			}
 		} catch (Throwable e) {
 			log.error("バッファ事前投入でエラーが発生しました。", e);
@@ -155,7 +155,7 @@ public class WebUIController implements Constants {
 	 */
 	private void publish(WebUIEvent event) {
 		try {
-			String json = MAPPER.writeValueAsString(event);
+			String json = JSON.writeValueAsString(event);
 			String data = "data: " + json + "\n\n";
 			synchronized (this) {
 				eventBuffer.add(data);

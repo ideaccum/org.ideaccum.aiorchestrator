@@ -6,7 +6,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.core.json.JsonReadFeature;
+import tools.jackson.core.json.JsonWriteFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 
 /**
  * アプリケーション共通の定数を提供するインタフェースクラスです。<br>
@@ -24,7 +28,44 @@ import tools.jackson.databind.ObjectMapper;
 public interface Constants {
 
 	/** JSONオブジェクトマッパー */
-	public static final ObjectMapper MAPPER = new ObjectMapper();
+	public static final JsonMapper JSON = JsonMapper.builder() //
+			.configure(JsonReadFeature.ALLOW_JAVA_COMMENTS, false) // Java/C++スタイルコメント（// と /* */）を許可する
+			.configure(JsonReadFeature.ALLOW_YAML_COMMENTS, false) // YAMLスタイルコメント（#）を許可する
+			.configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, false) // 任意文字のバックスラッシュエスケープを許可する
+			.configure(JsonReadFeature.ALLOW_SINGLE_QUOTES, false) // シングルクォートによる文字列表記を許可する
+			.configure(JsonReadFeature.ALLOW_RS_CONTROL_CHAR, false) // RSコントロール文字(0x1E)を空白として扱うことを許可する
+			.configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS, false) // エスケープなし制御文字（ASCII 32未満）を許可する
+			.configure(JsonReadFeature.ALLOW_UNQUOTED_PROPERTY_NAMES, false) // クォートなしプロパティ名を許可する
+			.configure(JsonReadFeature.ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS, false) // 小数点始まりの数値を許可する（例: .123）
+			.configure(JsonReadFeature.ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS, false) // プラス記号始まりの数値を許可する（例: +123）
+			.configure(JsonReadFeature.ALLOW_LEADING_ZEROS_FOR_NUMBERS, false) // 先頭ゼロ付き整数を許可する（例: 000001）
+			.configure(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS, false) // 非数値（NaN / Infinity / -Infinity）を許可する
+			.configure(JsonReadFeature.ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS, false) // 末尾小数点付き数値を許可する（例: 123.）
+			.configure(JsonReadFeature.ALLOW_MISSING_VALUES, false) // 配列の欠損値（,,）を null として許可する
+			.configure(JsonReadFeature.ALLOW_TRAILING_COMMA, false) // 末尾カンマを許可する
+			.configure(JsonWriteFeature.QUOTE_PROPERTY_NAMES, true) // プロパティ名をダブルクォートで囲む（JSON仕様準拠）
+			.configure(JsonWriteFeature.WRITE_NAN_AS_STRINGS, true) // NaN / Infinity を文字列として出力する
+			.configure(JsonWriteFeature.COMBINE_UNICODE_SURROGATES_IN_UTF8, true) // サロゲートペアを4バイトUTF-8シーケンスに結合する（Jackson 3.0でデフォルト有効化）
+			.configure(JsonWriteFeature.ESCAPE_FORWARD_SLASHES, false) // スラッシュ（/）をバックスラッシュエスケープする
+			.configure(JsonWriteFeature.ESCAPE_NON_ASCII, false) // ASCII範囲外文字（128以上）をエスケープする
+			.configure(JsonWriteFeature.WRITE_HEX_UPPER_CASE, true) // 16進数を大文字で出力する
+			.configure(JsonWriteFeature.WRITE_NUMBERS_AS_STRINGS, false) // 数値を文字列として出力する
+			.build();
+
+	/** YAMLオブジェクトマッパー */
+	public static final YAMLMapper YAML = YAMLMapper.builder() //
+			.configure(YAMLWriteFeature.WRITE_DOC_START_MARKER, true) // ファイル先頭に --- を出力する 
+			.configure(YAMLWriteFeature.USE_NATIVE_OBJECT_ID, true) // YAML ネイティブの Object Id 構文を使用する
+			.configure(YAMLWriteFeature.USE_NATIVE_TYPE_ID, true) // YAML ネイティブの Type Id 構文を使用する
+			.configure(YAMLWriteFeature.CANONICAL_OUTPUT, false) // YAML の canonical（正規）形式で出力する 
+			.configure(YAMLWriteFeature.SPLIT_LINES, false) // 長いテキストを自動的に複数行に折り返す
+			.configure(YAMLWriteFeature.MINIMIZE_QUOTES, false) // クォート不要な文字列はプレーンで出力、必要な場合はシングルクォート  
+			.configure(YAMLWriteFeature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS, true) // MINIMIZE_QUOTES 有効時に数値文字列をクォートする（例: "8080" → '8080'）
+			.configure(YAMLWriteFeature.LITERAL_BLOCK_STYLE, true) // 改行を含む文字列をブロックスカラー（|）で出力する 
+			.configure(YAMLWriteFeature.INDENT_ARRAYS, true) // 配列エントリにインデントを付ける  
+			.configure(YAMLWriteFeature.INDENT_ARRAYS_WITH_INDICATOR, false) // 配列エントリにインジケーター付きのインデントを付ける  
+			.configure(YAMLWriteFeature.ALLOW_LONG_KEYS, false) // キー名の最大長を 128 → 1024 文字に拡張する 
+			.build();
 
 	/** 拡張子とContent-Typeのマッピング */
 	public static final Map<String, String> MIME_TYPES = Map.of( //
@@ -52,6 +93,12 @@ public interface Constants {
 	/** HTTP:フォービッデンステータスコード */
 	public static final int HTTP_STATUS_FORBIDDEN = 403;
 
+	/** HTTPレスポンス:キャッシュ制御(無効) */
+	public static final String HTTP_RESPONSE_CACHE_NOSTORE = "no-store";
+
+	/** HTTPレスポンス:キャッシュ制御(有効) */
+	public static final String HTTP_RESPONSE_CACHE_ENABLE = "private, max-age=" + (1 * 60 * 60); // 1時間
+
 	/** 日付フォーマット */
 	public static final DateFormat DATE_FORMAT_YYYY_MM_DD_HH_MM_SS = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
@@ -64,14 +111,14 @@ public interface Constants {
 	/** 日付フォーマット */
 	public static final DateTimeFormatter DATE_FORMATTER_YYYYMMDD_HHMMSS = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
-	/** デフォルト環境設定情報プロパティリソース */
-	public static final String DEFALUT_CONFIG_FILE = "/default-config.properties";
+	/** デフォルト環境設定情報リソース */
+	public static final String DEFALUT_CONFIG_FILE = "/default-config.yaml";
 
 	/** デフォルトプロジェクト設定リソース */
-	public static final String DEFAULT_PROJECT_FILE = "/default-project.properties";
+	public static final String DEFAULT_PROJECT_FILE = "/default-project.yaml";
 
-	/** 環境設定情報プロパティリソース */
-	public static final String CONFIG_FILE = "config/config.properties";
+	/** 環境設定情報リソース */
+	public static final String CONFIG_FILE = "config/config.yaml";
 
 	/** リソースパス:プロジェクトテンプレート */
 	public static final String RESOURCE_TEMPLATE_PROJECT = "/template-project";
@@ -91,17 +138,26 @@ public interface Constants {
 	/** リソースパス:エージェントテンプレート(討論) */
 	public static final String RESOURCE_TEMPLATE_AGENTS_DISCUSSION = "/template-agents/discussion";
 
+	/** リソースパス:プロンプトプリセットディレクトリ */
+	public static final String RESOURCE_PRESET_PROMPT_DIR = "/preset-prompt";
+
+	/** リソースパス:エージェントモデルプリセットディレクトリ */
+	public static final String RESOURCE_PRESET_AGENT_MODEL_DIR = "/preset-agent-model";
+
+	/** リソースパス:エージェント性質プリセットディレクトリ */
+	public static final String RESOURCE_PRESET_AGENT_PERSONALITY_DIR = "/preset-agent-personality";
+
 	/** プロンプトテンプレート:開始プロンプト */
-	public static final String RESOURCE_TEMPLATE_START_PROMPT = "/prompt/start-prompt.vm";
+	public static final String RESOURCE_TEMPLATE_START_PROMPT = "/internal-prompt/start-prompt.vm";
 
 	/** プロンプトテンプレート:リーダープロンプト */
-	public static final String RESOURCE_TEMPLATE_LEADER_PROMPT = "/prompt/leader-prompt.vm";
+	public static final String RESOURCE_TEMPLATE_LEADER_PROMPT = "/internal-prompt/leader-prompt.vm";
 
 	/** プロンプトテンプレート:継続プロンプト */
-	public static final String RESOURCE_TEMPLATE_CONTINUE_PROMPT = "/prompt/continue-prompt.vm";
+	public static final String RESOURCE_TEMPLATE_CONTINUE_PROMPT = "/internal-prompt/continue-prompt.vm";
 
 	/** プロンプトテンプレート:リトライプロンプト */
-	public static final String RESOURCE_TEMPLATE_RETRY_PROMPT = "/prompt/retry-prompt.vm";
+	public static final String RESOURCE_TEMPLATE_RETRY_PROMPT = "/internal-prompt/retry-prompt.vm";
 
 	/** オーケストレーター:ホームパス */
 	public static final String ORCHESTRATOR_HOME_PATH = ".orchestrator";
@@ -122,7 +178,10 @@ public interface Constants {
 	public static final String ORCHESTRATOR_SESSIONS_FILE = ".orchestrator/sessions.json";
 
 	/** オーナーエージェント名(予約名) */
-	public static final String OWNER_AGENT_NAME = "Owner";
+	public static final String OWNER_AGENT_NAME = "User";
+
+	/** オーナーエージェント名(旧予約名) */
+	public static final String OWNER_AGENT_NAME_OLD = "Owner";
 
 	/** エージェント:デフォルトタイプ */
 	public static final String AGENT_DEFAULT_TYPE = "claude-cli";
@@ -313,6 +372,15 @@ public interface Constants {
 
 	/** API:URL(制御キーワード取得) */
 	public static final String API_GET_CONTROL_KEYWORDS = "/api/get_control_keywords";
+
+	/** API:URL(プロンプトプリセット一覧取得) */
+	public static final String API_GET_PRESET_PROMPTS = "/api/get_preset_prompts";
+
+	/** API:URL(エージェントモデルプリセット取得) */
+	public static final String API_GET_AGENT_MODELS = "/api/get_agent_models";
+
+	/** API:URL(エージェント性質プリセット取得) */
+	public static final String API_GET_AGENT_PERSONALITIES = "/api/get_agent_personalities";
 
 	/** API:URL(ログダウンロード) */
 	public static final String API_DOWNLOAD_LOGS = "/api/download_logs";

@@ -44,7 +44,7 @@ public class OutputUtils implements Constants {
 	 */
 	private static boolean isJSON(String content) {
 		try {
-			MAPPER.readTree(content);
+			JSON.readTree(content);
 			return true;
 		} catch (Throwable e) {
 			return false;
@@ -66,12 +66,12 @@ public class OutputUtils implements Constants {
 			List<DumpEntry> outputList = new LinkedList<>();
 			if (Files.exists(outputFile)) {
 				try {
-					outputList = MAPPER.readValue(outputFile.toFile(), MAPPER.getTypeFactory().constructCollectionType(List.class, DumpEntry.class));
+					outputList = JSON.readValue(outputFile.toFile(), JSON.getTypeFactory().constructCollectionType(List.class, DumpEntry.class));
 				} catch (Throwable e) {
 				}
 			}
 
-			Object outputContent = isJSON(response) ? MAPPER.readTree(response) : new StringNode(response).toPrettyString();
+			Object outputContent = isJSON(response) ? JSON.readTree(response) : new StringNode(response).toPrettyString();
 			DumpEntry outputObject = new DumpEntry(DATE_FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date()), outputContent);
 			outputList.add(outputObject);
 
@@ -79,7 +79,7 @@ public class OutputUtils implements Constants {
 				Files.createDirectories(outputPath);
 			}
 
-			MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
+			JSON.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
@@ -99,7 +99,7 @@ public class OutputUtils implements Constants {
 
 			List<DumpEntry> outputList = new LinkedList<>();
 			if (Files.exists(outputFile)) {
-				outputList = MAPPER.readValue(outputFile.toFile(), MAPPER.getTypeFactory().constructCollectionType(List.class, DumpEntry.class));
+				outputList = JSON.readValue(outputFile.toFile(), JSON.getTypeFactory().constructCollectionType(List.class, DumpEntry.class));
 			}
 
 			Object outputContent = new StringNode(content).toPrettyString();
@@ -111,7 +111,7 @@ public class OutputUtils implements Constants {
 			}
 
 			WebUIController.instance().publishContent(agentName, content);
-			MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
+			JSON.writerWithDefaultPrettyPrinter().writeValue(outputFile.toFile(), outputList);
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}

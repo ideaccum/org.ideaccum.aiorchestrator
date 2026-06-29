@@ -144,7 +144,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 			String type = node.path("type").asString();
 
 			if ("thread.started".equals(type)) {
@@ -226,7 +226,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// content内容を取得
 			String result = node.path("thread_id").asString();
@@ -251,7 +251,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// item.typeがagent_message以外は解析スキップ
 			if (!"agent_message".equals(node.path("item").path("type").asString())) {
@@ -285,7 +285,7 @@ public class CodexCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// typeがturn.completed以外は解析スキップ
 			if (!"turn.completed".equals(node.path("type").asString())) {

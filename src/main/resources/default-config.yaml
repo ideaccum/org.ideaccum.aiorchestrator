@@ -1,0 +1,11 @@
+---
+application.theme: "dark"
+application.repository.path: "./repos"
+application.webui.port: "8080"
+application.webui.connection: "256"
+agent.timeout: "3600"
+agent.cli.claude-cli.command: "%APPDATA%\\npm\\claude.cmd"
+agent.cli.gemini-cli.command: "%APPDATA%\\npm\\gemini.cmd"
+agent.cli.antigravity-cli.command: "%USERPROFILE%\\AppData\\Local\\agy\\bin\\agy.exe"
+agent.cli.codex-cli.command: "%APPDATA%\\npm\\codex.cmd"
+agent.cli.copilot-cli.command: "%APPDATA%\\npm\\copilot.cmd"

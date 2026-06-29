@@ -80,7 +80,7 @@ public class StringUtils implements Constants {
 	 */
 	public static boolean isJSON(String string) {
 		try {
-			MAPPER.readTree(string);
+			JSON.readTree(string);
 			return true;
 		} catch (Throwable e) {
 			return false;

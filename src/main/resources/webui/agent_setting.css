@@ -26,3 +26,13 @@
 #field-personality {
 	height: var(--agent-personality-height);
 }
+
+/* ---- 性質フィールドグループ（プリセット行 + テキストエリア） ---- */
+.personality-field-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-xs);
+	flex: 1;
+	min-width: 0;
+}
+

@@ -161,7 +161,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 			String type = node.path("type").asString();
 
 			if ("init".equals(type)) {
@@ -246,7 +246,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// content内容を取得
 			String result = node.path("session_id").asString().trim();
@@ -271,7 +271,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// typeがmessage以外は解析スキップ
 			if (!"message".equals(node.path("type").asString())) {
@@ -333,7 +333,7 @@ public class GeminiCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// エラーのみレスポンスはスキップ("error" フィールドが存在し、"response"が空の場合)
 			JsonNode errorNode = node.path("error");

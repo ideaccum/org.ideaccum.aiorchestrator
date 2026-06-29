@@ -72,8 +72,8 @@
 			<!-- オーナーカード -->
 			<div id="owner-card" class="card owner-card hidden">
 				<div class="card-header">
-					<div class="card-avatar owner-avatar">O</div>
-					<span class="agent-name">Owner</span>
+					<div class="card-avatar owner-avatar">U</div>
+					<span class="agent-name">User</span>
 					<div class="owner-card-actions">
 						<button id="owner-start-btn" class="btn btn-run">実行</button>
 						<button id="owner-stop-btn" class="btn owner-stop-btn hidden">停止</button>
@@ -85,12 +85,8 @@
 				</div>
 				<!-- プロンプト入力エリア -->
 				<div class="owner-card-input">
-					<div class="owner-preset-row">
-						<span class="icon icon-hint owner-preset-hint"></span>
-						<button id="owner-preset-check" class="btn btn-preset" type="button">エージェント存在確認</button>
-						<button id="owner-preset-summary" class="btn btn-preset" type="button">過去会話のサマリー</button>
-						<button id="owner-preset-next" class="btn btn-preset" type="button">推奨される次の指示</button>
-						<button id="owner-preset-discussion-auto-pilot" class="btn btn-preset" type="button">自動運転トロッコ議論</button>
+					<div class="preset-row">
+						<span class="icon icon-hint preset-hint"></span>
 					</div>
 					<textarea id="owner-prompt-input" class="owner-prompt-textarea scrollbar-thin" placeholder="タスクプロンプトを入力してください..."></textarea>
 				</div>

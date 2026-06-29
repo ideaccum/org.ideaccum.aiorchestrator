@@ -37,6 +37,9 @@
 	--fs-title: 1.5em; /* ヘッダータイトル */
 	--fs-tag: 0.7em; /* タグバッチ */
 	--fs-btn: 0.8rem; /* ボタン */
+	--fs-btn-preset: 0.7rem; /* プリセットボタン */
+	--sp-btn-clip-copy: 0.1em 0.25em; /* クリップボードコピーボタンパディング */
+	--size-clip-copy-icon: 0.85em; /* クリップボードコピーボタンアイコンサイズ */
 
 	/* ---- ボーダー ---- */
 	--border-width: 1px; /* 標準ボーダー幅(フォームフィールドも共用) */
@@ -180,6 +183,11 @@
 	--size-toggle-knob: calc(var(--h-toggle) - var(--sp-toggle-knob) * 2); /* トグルノブサイズ */
 	--toggle-knob-travel: calc(var(--w-toggle) - var(--size-toggle-knob) - var(--sp-toggle-knob) * 2); /* トグルノブ移動距離 */
 	--gap-turn-meta: 0.5em; /* ターンメタ内アイテム間隔 */
+	--combobox-toggle-fs: 1.55em; /* コンボボックス ▾ ボタンフォントサイズ */
+	--combobox-toggle-sp: 0.20em; /* コンボボックス ▾ ボタンパディング */
+	--combobox-list-max-h: 14em; /* コンボボックス ドロップダウンリスト最大高さ */
+	--combobox-list-padding: 0.2em 0; /* コンボボックス ドロップダウンリスト上下パディング */
+	--combobox-toggle-hover-color: #fff; /* コンボボックス ▾ ボタンホバー時文字色 */
 
 	/* ---- 行間 ---- */
 	--lh-normal: 1.235; /* 標準行間 */
@@ -262,6 +270,9 @@
 	--color-btn-text: var(--theme-btn-text); /* ボタン文字色 */
 	--color-btn-disabled-bg: var(--theme-btn-disabled-bg); /* 非活性ボタン背景色 */
 	--color-btn-disabled-text: var(--theme-btn-disabled-text); /* 非活性ボタン文字色 */
+	--color-btn-preset-bg: var(--theme-btn-preset-bg); /* プリセットボタン背景色 */
+	--color-btn-preset-text: var(--theme-btn-preset-text); /* プリセットボタン文字色 */
+	--color-btn-preset-border: var(--theme-btn-preset-border); /* プリセットボタンボーダー色 */
 
 	/* ---- フォームフィールド ---- */
 	--color-field-bg: var(--theme-field-bg); /* フォームフィールド背景色 */

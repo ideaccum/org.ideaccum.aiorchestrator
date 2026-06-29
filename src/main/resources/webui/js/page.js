@@ -60,15 +60,16 @@ class PageController {
 	 * ページ表示状態変化時の処理を実行します。<br>
 	 */
 	async #onVisibilityChange() {
-		try {
-			if (document.hidden) {
-				await this.#disconnect();
-			} else if (!this.#eventSource) {
-				await this.#connect();
-			}
-		} catch (e) {
-			WebUI.catchFatal(e);
-		}
+		// ブラウザがバックグラウンドになってもSSE接続は維持する
+		//try {
+		//	if (document.hidden) {
+		//		await this.#disconnect();
+		//	} else if (!this.#eventSource) {
+		//		await this.#connect();
+		//	}
+		//} catch (e) {
+		//	WebUI.catchFatal(e);
+		//}
 	}
 
 	/**
@@ -303,6 +304,9 @@ class PageController {
 					document.body.classList.remove("has-project");
 					if (projectNameEl) {
 						projectNameEl.innerHTML = "";
+					}
+					if (document.querySelector(".header-nav-active.header-nav-requires-project")) {
+						window.location.href = "/webui/project_setting.html";
 					}
 				}
 			},

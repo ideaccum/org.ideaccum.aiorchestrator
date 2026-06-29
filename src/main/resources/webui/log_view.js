@@ -17,12 +17,16 @@ class LogViewController {
 	/** ストリーミングエージェントマップ(キー:エージェント名) */
 	#liveAgents;
 
+	/** SSE再接続直後のリプレイウィンドウ中かどうか(trueの間は#loadLogでスクロールしない) */
+	#inReplayWindow;
+
 	/**
 	 * コンストラクタ<br>
 	 */
 	constructor() {
 		try {
 			this.#liveAgents = {};
+			this.#inReplayWindow = false;
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -50,9 +54,17 @@ class LogViewController {
 	/**
 	 * 会話ログをサーバーから取得して画面に表示します。<br>
 	 * ストリーミング中のライブターンは末尾に再アタッチします。<br>
+	 * @param {boolean} [scrollToBottom=true] - 描画後に最下部へスクロールするか。
+	 *   falseの場合はinnerHTML消去前のスクロール位置を復元する。
 	 */
-	async #loadLog() {
+	async #loadLog(scrollToBottom = true) {
 		try {
+			/*
+			 * innerHTML 消去前にスクロール位置を退避(scrollToBottom=false 時の復元用)
+			 */
+			const mainEl = document.querySelector(".main");
+			const savedScrollTop = mainEl.scrollTop;
+
 			/*
 			 * サーバーサイド処理
 			 */
@@ -103,7 +115,7 @@ class LogViewController {
 						 * ターンパネル要素
 						 */
 						const turnEl = document.createElement("div");
-						turnEl.className = "log-turn" + (isOwner ? " is-owner" : "");
+						turnEl.className = "log-turn clip-copy-block" + (isOwner ? " is-owner" : "");
 
 						/*
 						 * アバター要素
@@ -119,6 +131,7 @@ class LogViewController {
 						const titleEl = document.createElement("div");
 						titleEl.className = "log-turn-title";
 						titleEl.innerHTML = '<span class="log-agent-name">' + Utils.esc(conversation.agentName || "") + "</span>" + '<span class="log-turn-timestamp">' + Utils.esc(conversation.timestamp || "") + "</span>";
+						titleEl.appendChild(WebUI.createCopyButton(() => Utils.filterKeywordLines(conversation.content || "")));
 
 						/*
 						 * ターン本文要素
@@ -153,8 +166,14 @@ class LogViewController {
 
 					/*
 					 * 自動スクロール
+					 * scrollToBottom=true: 最下部へスクロール(通常完了・初期表示)
+					 * scrollToBottom=false: 消去前の位置を復元(SSE再接続リプレイ中)
 					 */
-					WebUI.scrollBottom(document.querySelector(".main"));
+					if (scrollToBottom) {
+						WebUI.scrollBottom(mainEl);
+					} else {
+						mainEl.scrollTop = savedScrollTop;
+					}
 				},
 				onError: () => {
 					/*
@@ -177,7 +196,9 @@ class LogViewController {
 			/*
 			 * ログコンテンツ更新
 			 */
-			if (data.type === Constants.SSE_TYPE_AGENT_INITIALIZED) {
+			if (data.type === Constants.SSE_TYPE_CONNECTED) {
+				this.#onSseConnected(data);
+			} else if (data.type === Constants.SSE_TYPE_AGENT_INITIALIZED) {
 				this.#onSseAgentInitialized(data);
 			} else if (data.type === Constants.SSE_TYPE_AGENT_START) {
 				this.#onSseAgentStart(data);
@@ -198,6 +219,21 @@ class LogViewController {
 	}
 
 	/**
+	 * SSE(connected)イベント処理を実行します。<br>
+	 */
+	#onSseConnected(data) {
+		try {
+			/*
+			 * SSE再接続直後はリプレイウィンドウに入る
+			 * リプレイ中は #loadLog でスクロールしない(フォーカス復帰による誤スクロール防止)
+			 */
+			this.#inReplayWindow = true;
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
 	 * SSE(agent_initialized)イベント処理を実行します。<br>
 	 */
 	async #onSseAgentInitialized(data) {
@@ -211,9 +247,9 @@ class LogViewController {
 			this.#liveAgents = {};
 
 			/*
-			 * ログ再読み込み
+			 * ログ再読み込み(リプレイ中はスクロールしない)
 			 */
-			await this.#loadLog();
+			await this.#loadLog(false);
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -260,6 +296,7 @@ class LogViewController {
 			const titleEl = document.createElement("div");
 			titleEl.className = "log-turn-title";
 			titleEl.innerHTML = '<span class="log-agent-name">' + Utils.esc(agentName || "") + "</span>" + '<span class="log-turn-timestamp">' + Utils.esc(timestamp || "") + "</span>";
+			titleEl.appendChild(WebUI.createCopyButton(() => turnEl._rawText ?? (this.#liveAgents[agentName]?.currentRaw || "")));
 
 			/*
 			 * ターン本文要素
@@ -291,6 +328,25 @@ class LogViewController {
 			entriesEl.appendChild(turnEl);
 
 			/*
+			 * 所要時間タイマー開始
+			 */
+			const parsedStartMs = (() => {
+				if (!timestamp) {
+					return null;
+				}
+				const matcher = timestamp.match(/(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+				if (!matcher) {
+					return null;
+				}
+				return new Date(parseInt(matcher[1]), parseInt(matcher[2]) - 1, parseInt(matcher[3]), parseInt(matcher[4]), parseInt(matcher[5]), parseInt(matcher[6])).getTime();
+			})();
+			const startTimeMs = parsedStartMs ?? Date.now();
+			tokensEl.textContent = Utils.formatDurationMs(Date.now() - startTimeMs);
+			const elapsedTimer = setInterval(() => {
+				tokensEl.textContent = Utils.formatDurationMs(Date.now() - startTimeMs);
+			}, 1000);
+
+			/*
 			 * ライブターン情報保持
 			 */
 			this.#liveAgents[agentName] = {
@@ -299,6 +355,8 @@ class LogViewController {
 				tokensEl: tokensEl, //
 				currentRaw: "", //
 				timestamp, //
+				startTimeMs, //
+				elapsedTimer, //
 			};
 
 			/*
@@ -372,6 +430,11 @@ class LogViewController {
 			}
 
 			/*
+			 * タイマー停止
+			 */
+			clearInterval(liveAgent.elapsedTimer);
+
+			/*
 			 * ストリーミング解除
 			 */
 			liveAgent.turnEl.classList.remove("is-streaming");
@@ -392,6 +455,7 @@ class LogViewController {
 			/*
 			 * ライブエージェント削除(確定済みターンはloadLog再描画時に静的ターンとして表示される)
 			 */
+			liveAgent.turnEl._rawText = Utils.filterKeywordLines(liveAgent.currentRaw);
 			delete this.#liveAgents[agentName];
 		} catch (e) {
 			WebUI.catchFatal(e);
@@ -419,6 +483,11 @@ class LogViewController {
 			if (!liveAgent) {
 				return;
 			}
+
+			/*
+			 * タイマー停止
+			 */
+			clearInterval(liveAgent.elapsedTimer);
 
 			/*
 			 * ストリーミング解除
@@ -449,23 +518,27 @@ class LogViewController {
 	async #onSseOrchestratorDone(data) {
 		try {
 			/*
-			 * イベントデータ展開
-			 */
-			const {} = data;
-
-			/*
-			 * 全ライブターンストリーミング解除
+			 * 全ライブターンタイマー停止・ストリーミング解除
 			 */
 			Object.values(this.#liveAgents).forEach((liveAgent) => {
+				clearInterval(liveAgent.elapsedTimer);
 				liveAgent.turnEl.classList.remove("is-streaming");
 				liveAgent.bodyEl.classList.remove("streaming");
 			});
 			this.#liveAgents = {};
 
 			/*
+			 * リプレイウィンドウ中かを退避してフラグをクリア
+			 * リプレイ中(SSE再接続後のバッファリプレイ)はスクロールしない
+			 * 実際のオーケストレーター完了時はスクロールする
+			 */
+			const wasInReplay = this.#inReplayWindow;
+			this.#inReplayWindow = false;
+
+			/*
 			 * ログ再読み込み
 			 */
-			await this.#loadLog();
+			await this.#loadLog(!wasInReplay);
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -477,14 +550,10 @@ class LogViewController {
 	#onSseDisconnected(data) {
 		try {
 			/*
-			 * イベントデータ展開
-			 */
-			const {} = data;
-
-			/*
-			 * 全ライブターンストリーミング解除
+			 * 全ライブターンタイマー停止・ストリーミング解除
 			 */
 			Object.values(this.#liveAgents).forEach((liveAgent) => {
+				clearInterval(liveAgent.elapsedTimer);
 				liveAgent.turnEl.classList.remove("is-streaming");
 				liveAgent.bodyEl.classList.remove("streaming");
 			});

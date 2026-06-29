@@ -1,11 +1,9 @@
 package org.ideaccum.ai.orchestrator.webui;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -49,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -179,7 +177,7 @@ public class WebUIServer implements Constants {
 	 * @param apiResponse APIレスポンスオブジェクト
 	 */
 	private void sendApiResponse(HttpExchange exchange, WebUIApiResponse apiResponse) {
-		byte[] responseBytes = MAPPER.writeValueAsBytes(apiResponse);
+		byte[] responseBytes = JSON.writeValueAsBytes(apiResponse);
 		exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
 		exchange.getResponseHeaders().set("Connection", "close");
 		try {
@@ -277,6 +275,15 @@ public class WebUIServer implements Constants {
 			} else if (API_GET_CONTROL_KEYWORDS.equals(requestPath)) {
 				// API:制御キーワード取得
 				apiGetControlKeywords(exchange);
+			} else if (API_GET_PRESET_PROMPTS.equals(requestPath)) {
+				// API:プロンプトプリセット一覧取得
+				apiGetPresetPrompts(exchange);
+			} else if (API_GET_AGENT_MODELS.equals(requestPath)) {
+				// API:エージェントモデルプリセット取得
+				apiGetAgentModels(exchange);
+			} else if (API_GET_AGENT_PERSONALITIES.equals(requestPath)) {
+				// API:エージェント性質プリセット取得
+				apiGetAgentPersonalities(exchange);
 			} else if (API_DOWNLOAD_LOGS.equals(requestPath)) {
 				// API:ログダウンロード
 				apiDownloadLogs(exchange);
@@ -344,7 +351,8 @@ public class WebUIServer implements Constants {
 		 * ヘッダー情報設定
 		 */
 		exchange.getResponseHeaders().set("Content-Type", contentType);
-		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+		//exchange.getResponseHeaders().set("Cache-Control", HTTP_RESPONSE_CACHE_ENABLE);
+		exchange.getResponseHeaders().set("Cache-Control", HTTP_RESPONSE_CACHE_NOSTORE);
 		exchange.getResponseHeaders().set("Connection", "close");
 		exchange.sendResponseHeaders(HTTP_STATUS_OK, resourceData.length);
 
@@ -400,7 +408,8 @@ public class WebUIServer implements Constants {
 		 * ヘッダー情報設定
 		 */
 		exchange.getResponseHeaders().set("Content-Type", contentType);
-		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+		//exchange.getResponseHeaders().set("Cache-Control", HTTP_RESPONSE_CACHE_ENABLE);
+		exchange.getResponseHeaders().set("Cache-Control", HTTP_RESPONSE_CACHE_NOSTORE);
 		exchange.getResponseHeaders().set("Connection", "close");
 		exchange.sendResponseHeaders(HTTP_STATUS_OK, resourceData.length);
 
@@ -431,7 +440,7 @@ public class WebUIServer implements Constants {
 		 * ヘッダー情報設定
 		 */
 		exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=UTF-8");
-		exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+		exchange.getResponseHeaders().set("Cache-Control", HTTP_RESPONSE_CACHE_NOSTORE);
 		exchange.getResponseHeaders().set("Connection", "close");
 		exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
 		exchange.sendResponseHeaders(HTTP_STATUS_OK, 0);
@@ -505,15 +514,13 @@ public class WebUIServer implements Constants {
 		}
 		try (Stream<Path> stream = Files.list(agentsPath)) {
 			return (int) stream //
-					.filter(file -> file.getFileName().toString().endsWith(".properties")) //
+					.filter(file -> file.getFileName().toString().endsWith(".yaml")) //
 					.filter(file -> {
-						Properties properties = new Properties();
-						try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8)) {
-							properties.load(reader);
+						try {
+							return new AgentConfig(file).isLeader();
 						} catch (Throwable e) {
 							throw new UncheckedException(e);
 						}
-						return Boolean.parseBoolean(properties.getProperty("agent.leader", "false"));
 					}) //
 					.count();
 		} catch (Throwable e) {
@@ -537,7 +544,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 
 		/*
 		 * バリデーションチェック
@@ -598,7 +605,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -683,7 +690,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -731,7 +738,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -778,7 +785,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -814,7 +821,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -866,7 +873,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1120,7 +1127,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1148,7 +1155,7 @@ public class WebUIServer implements Constants {
 			Map<String, Long> agentTokenMap = new LinkedHashMap<>();
 			if (Files.exists(convFile)) {
 				try {
-					JsonNode convNode = MAPPER.readTree(convFile.toFile());
+					JsonNode convNode = JSON.readTree(convFile.toFile());
 					JsonNode entriesNode = convNode.isArray() ? convNode : convNode.path("entries");
 					if (entriesNode.isArray() && !entriesNode.isEmpty()) {
 						hasConversations = true;
@@ -1173,9 +1180,9 @@ public class WebUIServer implements Constants {
 			Path agentsDir = config.getApplicationAgentsPath(projectName);
 			if (Files.exists(agentsDir)) {
 				try {
-					Files.list(agentsDir).filter(path -> path.toString().endsWith(".properties")).forEach(path -> {
+					Files.list(agentsDir).filter(path -> path.toString().endsWith(".yaml")).forEach(path -> {
 						String fileName = path.getFileName().toString();
-						String agentName = fileName.substring(0, fileName.length() - ".properties".length());
+						String agentName = fileName.substring(0, fileName.length() - ".yaml".length());
 						agentTokenMap.putIfAbsent(agentName, 0L);
 					});
 				} catch (Throwable ignored) {
@@ -1188,15 +1195,16 @@ public class WebUIServer implements Constants {
 				Map<String, Object> entry = new LinkedHashMap<>();
 				entry.put("name", agentName);
 				entry.put("tokens", e.getValue());
-				Path agentFile = agentsDir.resolve(agentName + ".properties");
+				Path agentFile = agentsDir.resolve(agentName + ".yaml");
 				if (Files.exists(agentFile)) {
-					Properties agentProps = new Properties();
-					try (Reader agentReader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(agentFile)), StandardCharsets.UTF_8)) {
-						agentProps.load(agentReader);
+					try {
+						AgentConfig ac = new AgentConfig(agentFile);
+						entry.put("type", Objects.toString(ac.getType(), ""));
+						entry.put("model", Objects.toString(ac.getModel(), ""));
 					} catch (Throwable ignored) {
+						entry.put("type", "");
+						entry.put("model", "");
 					}
-					entry.put("type", agentProps.getProperty("agent.type", ""));
-					entry.put("model", agentProps.getProperty("agent.model", ""));
 				} else {
 					entry.put("type", "");
 					entry.put("model", "");
@@ -1241,7 +1249,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1261,23 +1269,20 @@ public class WebUIServer implements Constants {
 		if (Files.isDirectory(agentsPath)) {
 			try (Stream<Path> stream = Files.list(agentsPath)) {
 				List<Path> files = stream //
-						.filter(file -> file.getFileName().toString().endsWith(".properties")) //
-						.filter(file -> !file.getFileName().toString().equalsIgnoreCase(OWNER_AGENT_NAME + ".properties")) //
+						.filter(file -> file.getFileName().toString().endsWith(".yaml")) //
+						.filter(file -> !file.getFileName().toString().equalsIgnoreCase(OWNER_AGENT_NAME + ".yaml")) //
 						.sorted(Comparator.comparing(file -> file.getFileName().toString())) //
 						.collect(Collectors.toList());
 				for (Path file : files) {
-					Properties properties = new Properties();
-					try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8)) {
-						properties.load(reader);
-					}
-					String agentName = properties.getProperty("agent.name", "");
+					AgentConfig ac = new AgentConfig(file);
+					String agentName = ac.getName();
 					Map<String, Object> agent = new LinkedHashMap<>();
 					agent.put("name", agentName);
-					agent.put("type", properties.getProperty("agent.type", AGENT_DEFAULT_TYPE));
-					agent.put("model", properties.getProperty("agent.model", ""));
-					agent.put("extraArgs", properties.getProperty("agent.extra.args", ""));
-					agent.put("leader", Boolean.parseBoolean(properties.getProperty("agent.leader", "false")));
-					agent.put("role", properties.getProperty("agent.role", ""));
+					agent.put("type", Objects.toString(ac.getType(), AGENT_DEFAULT_TYPE));
+					agent.put("model", Objects.toString(ac.getModel(), ""));
+					agent.put("extraArgs", String.join(" ", ac.getExtraArgs()));
+					agent.put("leader", ac.isLeader());
+					agent.put("role", Objects.toString(ac.getRole(), ""));
 					String sessionId = "";
 					boolean inConversation = false;
 					if (isProjectSelected() && projectName.equals(context.getProjectName())) {
@@ -1288,7 +1293,7 @@ public class WebUIServer implements Constants {
 					}
 					agent.put("sessionId", sessionId);
 					agent.put("inConversation", inConversation);
-					agent.put("personality", properties.getProperty("agent.personality", ""));
+					agent.put("personality", Objects.toString(ac.getPersonality(), ""));
 					result.add(agent);
 				}
 			}
@@ -1321,7 +1326,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1337,7 +1342,7 @@ public class WebUIServer implements Constants {
 		boolean leader = request.path("leader").asBoolean(false);
 		String role = request.path("role").asString("");
 		String personality = request.path("personality").asString("");
-		String filename = name + ".properties";
+		String filename = name + ".yaml";
 		if (projectName.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
@@ -1346,8 +1351,8 @@ public class WebUIServer implements Constants {
 			sendApiResponse(exchange, WebUIApiResponse.error("エージェント名を入力してください。"));
 			return;
 		}
-		if (OWNER_AGENT_NAME.equalsIgnoreCase(name)) {
-			sendApiResponse(exchange, WebUIApiResponse.error("\"" + OWNER_AGENT_NAME + "\" はシステム予約名のため使用できません。"));
+		if (OWNER_AGENT_NAME.equalsIgnoreCase(name) || OWNER_AGENT_NAME_OLD.equalsIgnoreCase(name)) {
+			sendApiResponse(exchange, WebUIApiResponse.error("\"" + name + "\" はシステム予約名のため使用できません。"));
 			return;
 		}
 		if (!name.matches(ALPHANUMERIC_REGEX)) {
@@ -1400,33 +1405,30 @@ public class WebUIServer implements Constants {
 			String lookupName = originalName.isBlank() ? name : originalName;
 			Session session = context.getSessions().get(lookupName);
 			if (session != null && session.getSessionId() != null && !session.getSessionId().isBlank()) {
-				Path originalFile = config.getApplicationAgentsPath(projectName).resolve(lookupName + ".properties");
+				Path originalFile = config.getApplicationAgentsPath(projectName).resolve(lookupName + ".yaml");
 				if (Files.exists(originalFile)) {
-					Properties originalProps = new Properties();
-					try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(originalFile)), StandardCharsets.UTF_8)) {
-						originalProps.load(reader);
-					}
-					if (!type.equals(originalProps.getProperty("agent.type", AGENT_DEFAULT_TYPE))) {
+					AgentConfig originalProps = new AgentConfig(originalFile);
+					if (!type.equals(Objects.toString(originalProps.getType(), AGENT_DEFAULT_TYPE))) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
-					if (!model.equals(Objects.toString(originalProps.getProperty("agent.model"), ""))) {
+					if (!model.equals(Objects.toString(originalProps.getModel(), ""))) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
-					if (!extraArgs.equals(Objects.toString(originalProps.getProperty("agent.extra.args"), ""))) {
+					if (!extraArgs.equals(String.join(" ", originalProps.getExtraArgs()))) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
-					if (leader != Boolean.parseBoolean(originalProps.getProperty("agent.leader", "false"))) {
+					if (leader != originalProps.isLeader()) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
-					if (!role.equals(Objects.toString(originalProps.getProperty("agent.role"), ""))) {
+					if (!role.equals(Objects.toString(originalProps.getRole(), ""))) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
-					if (!personality.equals(Objects.toString(originalProps.getProperty("agent.personality"), ""))) {
+					if (!personality.equals(Objects.toString(originalProps.getPersonality(), ""))) {
 						sendApiResponse(exchange, WebUIApiResponse.error("既にセッションが存在するため変更できません。セッションを削除してから変更してください。"));
 						return;
 					}
@@ -1460,7 +1462,7 @@ public class WebUIServer implements Constants {
 				Files.createDirectories(agentsPath);
 				agentConfig.save(agentsPath.resolve(finalFilename));
 				if (finalIsAgentRename) {
-					Files.deleteIfExists(agentsPath.resolve(finalOriginalName + ".properties"));
+					Files.deleteIfExists(agentsPath.resolve(finalOriginalName + ".yaml"));
 					if (isProjectSelected() && finalProjectName.equals(context.getProjectName())) {
 						context.getSessions().rename(finalOriginalName, finalAgentName);
 					}
@@ -1506,7 +1508,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1514,7 +1516,7 @@ public class WebUIServer implements Constants {
 		 */
 		String projectName = request.path("project").asString("");
 		String name = request.path("name").asString("");
-		String filename = name + ".properties";
+		String filename = name + ".yaml";
 		if (projectName.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが選択されていません。"));
 			return;
@@ -1587,7 +1589,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1686,7 +1688,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1717,7 +1719,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1810,7 +1812,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
@@ -1827,7 +1829,7 @@ public class WebUIServer implements Constants {
 		Path logFile = config.getAgentConversationLogfile(context.getProjectName());
 		List<Map<String, Object>> entries = new ArrayList<>();
 		if (Files.exists(logFile)) {
-			JsonNode root = MAPPER.readTree(logFile.toFile());
+			JsonNode root = JSON.readTree(logFile.toFile());
 			/*
 			 * 直配列形式([{...},...]) と entries包含形式({"entries":[...]}) の両方に対応
 			 */
@@ -1876,7 +1878,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
@@ -1998,6 +2000,121 @@ public class WebUIServer implements Constants {
 	}
 
 	/**
+	 * プロンプトプリセット一覧取得リクエスト時の処理を行います。<br>
+	 * クラスパスの preset-prompt ディレクトリ配下のYAMLファイルを読み込んで返却します。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiGetPresetPrompts(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(プロンプトプリセット一覧取得)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * プリセットYAMLファイル読み込み・パース
+		 */
+		List<Map<String, Object>> presets = new ArrayList<>();
+		Map<String, byte[]> files = ResourceUtils.readResourceDirectory(RESOURCE_PRESET_PROMPT_DIR, ".yaml");
+		for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+			Map<String, Object> preset = YAML.readValue(entry.getValue(), new TypeReference<Map<String, Object>>() {
+			});
+			if (preset != null) {
+				presets.add(preset);
+			}
+		}
+
+		/*
+		 * 順序定義ソート
+		 */
+		presets.sort((preset1, preset2) -> {
+			int order1 = preset1.get("order") instanceof Number n ? n.intValue() : Integer.MAX_VALUE;
+			int order2 = preset2.get("order") instanceof Number n ? n.intValue() : Integer.MAX_VALUE;
+			return Integer.compare(order1, order2);
+		});
+
+		/*
+		 * レスポンス返却
+		 */
+		sendApiResponse(exchange, WebUIApiResponse.ok(presets));
+	}
+
+	/**
+	 * エージェントモデルプリセット取得リクエスト時の処理を行います。<br>
+	 * クラスパスの preset-agent-model ディレクトリ配下のYAMLファイルを読み込んで返却します。<br>
+	 * ファイル名(拡張子なし)をエージェントタイプキーとして、{タイプ: [モデル...]} 形式のマップを返します。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiGetAgentModels(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(エージェントモデルプリセット取得)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * エージェントモデルYAMLファイル読み込み・パース
+		 */
+		Map<String, Object> result = new LinkedHashMap<>();
+		Map<String, byte[]> files = ResourceUtils.readResourceDirectory(RESOURCE_PRESET_AGENT_MODEL_DIR, ".yaml");
+		for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+			String type = entry.getKey().replace(".yaml", "");
+			Map<String, Object> yaml = YAML.readValue(entry.getValue(), new TypeReference<Map<String, Object>>() {
+			});
+			Object models = yaml != null ? yaml.get("models") : null;
+			result.put(type, models != null ? models : List.of());
+		}
+
+		/*
+		 * レスポンス返却
+		 */
+		sendApiResponse(exchange, WebUIApiResponse.ok(result));
+	}
+
+	/**
+	 * エージェント性質プリセット取得リクエスト時の処理を行います。<br>
+	 * クラスパスの preset-agent-personality ディレクトリ配下のYAMLファイルを読み込んで返却します。<br>
+	 * @param exchange リクエストレスポンス情報
+	 * @throws Throwable 処理中に予期せぬ例外が発生した場合にスローされます
+	 */
+	private void apiGetAgentPersonalities(HttpExchange exchange) throws Throwable {
+		/*
+		 * リクエストパス取得
+		 */
+		String requestPath = Objects.toString(exchange.getRequestURI().getPath(), "");
+		log.debug("APIリクエスト(エージェント性質プリセット取得)を受け付けました(" + requestPath + ")。");
+
+		/*
+		 * 性質プリセットYAMLファイル読み込み・パース
+		 */
+		List<Map<String, Object>> presets = new ArrayList<>();
+		Map<String, byte[]> files = ResourceUtils.readResourceDirectory(RESOURCE_PRESET_AGENT_PERSONALITY_DIR, ".yaml");
+		for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+			Map<String, Object> preset = YAML.readValue(entry.getValue(), new TypeReference<Map<String, Object>>() {
+			});
+			if (preset != null) {
+				presets.add(preset);
+			}
+		}
+
+		/*
+		 * 順序定義ソート
+		 */
+		presets.sort((preset1, preset2) -> {
+			int order1 = preset1.get("order") instanceof Number n ? n.intValue() : Integer.MAX_VALUE;
+			int order2 = preset2.get("order") instanceof Number n ? n.intValue() : Integer.MAX_VALUE;
+			return Integer.compare(order1, order2);
+		});
+
+		/*
+		 * レスポンス返却
+		 */
+		sendApiResponse(exchange, WebUIApiResponse.ok(presets));
+	}
+
+	/**
 	 * ログダウンロードリクエスト時の処理を行います。<br>
 	 * プロジェクトの .orchestrator ディレクトリ配下を ZIP 圧縮してレスポンスします。<br>
 	 * @param exchange リクエストレスポンス情報
@@ -2014,7 +2131,7 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		String projectName = request.path("project").asString("");
 		if (projectName.isBlank()) {
 			sendApiResponse(exchange, WebUIApiResponse.error("プロジェクトが指定されていません。"));
@@ -2133,15 +2250,18 @@ public class WebUIServer implements Constants {
 		 * リクエスト情報取得
 		 */
 		byte[] requestBytes = exchange.getRequestBody().readAllBytes();
-		JsonNode request = MAPPER.readTree(requestBytes);
+		JsonNode request = JSON.readTree(requestBytes);
 		log.trace("リクエスト情報 : " + request.toString());
 
 		/*
 		 * デフォルトプロジェクト設定読み込み
 		 */
-		Properties defaults = new Properties();
-		try (Reader reader = new InputStreamReader(new BufferedInputStream(WebUIServer.class.getResourceAsStream(DEFAULT_PROJECT_FILE)), StandardCharsets.UTF_8)) {
-			defaults.load(reader);
+		Map<String, String> defaults = new LinkedHashMap<>();
+		try (InputStream is = WebUIServer.class.getResourceAsStream(DEFAULT_PROJECT_FILE)) {
+			if (is != null) {
+				defaults = YAML.readValue(is, new TypeReference<LinkedHashMap<String, String>>() {
+				});
+			}
 		} catch (Exception e) {
 			log.warn("デフォルトプロジェクト設定ファイルの読み込みに失敗しました。", e);
 		}
@@ -2150,8 +2270,8 @@ public class WebUIServer implements Constants {
 		 * レスポンスデータ生成
 		 */
 		Map<String, Object> result = new LinkedHashMap<>();
-		result.put("name", defaults.getProperty("project.name", ""));
-		result.put("title", defaults.getProperty("project.title", ""));
+		result.put("name", defaults.getOrDefault("project.name", ""));
+		result.put("title", defaults.getOrDefault("project.title", ""));
 
 		/*
 		 * レスポンス返却

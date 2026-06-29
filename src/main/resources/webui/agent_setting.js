@@ -24,6 +24,9 @@ class AgentSettingController {
 	/** 複写元エージェント情報(null=複写でない) */
 	#copyAgent;
 
+	/** エージェントタイプ別モデル候補マップ */
+	#agentModels;
+
 	/**
 	 * コンストラクタ<br>
 	 */
@@ -33,6 +36,7 @@ class AgentSettingController {
 			this.#agents = [];
 			this.#editAgent = null;
 			this.#copyAgent = null;
+			this.#agentModels = {};
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -44,6 +48,16 @@ class AgentSettingController {
 	async init() {
 		try {
 			/*
+			 * エージェントモデルプリセット取得(showForm → updateModelOptions より前に実行)
+			 */
+			await this.#loadAgentModels();
+
+			/*
+			 * 性質プリセットボタン読み込み
+			 */
+			await this.#loadPersonalityPresets();
+
+			/*
 			 * カレントプロジェクトエージェント取得
 			 */
 			await this.#loadCurrentProject();
@@ -54,11 +68,72 @@ class AgentSettingController {
 			await this.#loadAgentList();
 
 			/*
+			 * コンボボックス汎用初期化
+			 */
+			WebUI.initCombobox(document.getElementById("field-model-combobox"));
+
+			/*
 			 * イベントハンドラ登録
 			 */
 			document.getElementById("btn-new").onclick = (event) => this.#onClickNew(event);
 			document.getElementById("btn-save").onclick = (event) => this.#onClickSave(event);
 			document.getElementById("agents-list").onclick = (event) => this.#onListPanelClick(event);
+			document.getElementById("field-type").addEventListener("change", (event) => this.#onChangeAgentType(event));
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * エージェントモデルプリセットをサーバーから取得してキャッシュします。<br>
+	 */
+	async #loadAgentModels() {
+		try {
+			/*
+			 * サーバーサイド処理
+			 */
+			await WebCtrl.doAwait(WebAPI.getAgentModels({}, false), {
+				onDone: (result) => {
+					this.#agentModels = result.data || {};
+				},
+			});
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * 性質プリセットボタンをサーバーから取得して描画します。<br>
+	 */
+	async #loadPersonalityPresets() {
+		try {
+			await WebCtrl.doAwait(WebAPI.getAgentPersonalities({}, false), {
+				onDone: (result) => {
+					const presetRowEl = document.querySelector(".preset-row");
+					const presets = result.data || [];
+					presets.forEach((preset) => {
+						const presetBtn = document.createElement("button");
+						presetBtn.className = "btn btn-preset";
+						presetBtn.type = "button";
+						presetBtn.textContent = preset.label || "";
+						presetBtn.addEventListener("click", async () => {
+							const textareaEl = document.getElementById("field-personality");
+							if (textareaEl.disabled) {
+								return;
+							}
+							const personality = (preset.personality || "").trimEnd();
+							if (textareaEl.value.trim() && textareaEl.value.trim() !== personality) {
+								if (!(await WebUI.confirm("現在の性質内容を「" + (preset.label || "") + "」のプリセットで上書きしますか？"))) {
+									return;
+								}
+							}
+							textareaEl.value = personality;
+							textareaEl.focus();
+						});
+						presetRowEl.appendChild(presetBtn);
+					});
+				},
+			});
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -117,6 +192,9 @@ class AgentSettingController {
 					document.getElementById("session-exists-note").classList.add("hidden");
 				}
 				document.getElementById("field-name").focus();
+				document.querySelectorAll(".preset-row .btn-preset").forEach((presetBtn) => {
+					presetBtn.disabled = inConversation || hasSession;
+				});
 			} else {
 				/*
 				 * 新規/複写モード時初期値設定
@@ -139,7 +217,15 @@ class AgentSettingController {
 				document.getElementById("field-session-id").value = "";
 				document.getElementById("session-exists-note").classList.add("hidden");
 				document.getElementById("field-name").focus();
+				document.querySelectorAll(".preset-row .btn-preset").forEach((presetBtn) => {
+					presetBtn.disabled = false;
+				});
 			}
+
+			/*
+			 * エージェントタイプモデル候補リスト更新(フォーム初期化時はモデル値をクリアしない)
+			 */
+			this.#onChangeAgentType(false);
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}
@@ -490,6 +576,24 @@ class AgentSettingController {
 					},
 				},
 			);
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
+	 * エージェントタイプ変更時の処理を実行します。<br>
+	 * @param {boolean} [clearValue=true] - モデルフィールドの値をクリアするか(フォーム初期化時はfalse)
+	 */
+	#onChangeAgentType(clearValue = true) {
+		try {
+			const fieldEl = document.getElementById("field-model");
+			const comboboxEl = document.getElementById("field-model-combobox");
+			const agentType = document.getElementById("field-type").value;
+			WebUI.updateComboboxOptions(comboboxEl, this.#agentModels[agentType] || []);
+			if (clearValue) {
+				fieldEl.value = "";
+			}
 		} catch (e) {
 			WebUI.catchFatal(e);
 		}

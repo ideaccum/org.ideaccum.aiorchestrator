@@ -47,6 +47,7 @@ public final class Bootstrap implements Constants {
 		Config config = null;
 		try {
 			String configFile = args != null && args.length >= 1 ? args[0] : CONFIG_FILE;
+			Migrator.migrate(configFile); // TODO: 移行完了後に削除
 			config = new Config(Path.of(configFile));
 		} catch (Throwable e) {
 			log.error("予期せぬエラーが発生したため、アプリケーションを終了します。", e);

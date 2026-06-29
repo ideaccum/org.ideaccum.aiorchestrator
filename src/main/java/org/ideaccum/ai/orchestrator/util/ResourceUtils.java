@@ -2,6 +2,7 @@ package org.ideaccum.ai.orchestrator.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -10,6 +11,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -47,6 +50,57 @@ public class ResourceUtils {
 				throw new IOException("リソースが見つかりません(" + resourcePath + ")。");
 			}
 			return is.readAllBytes();
+		}
+	}
+
+	/**
+	 * クラスパスリソースディレクトリ配下のファイルを読み込みます。<br>
+	 * JAR実行時とIDE実行時(file://)の両方に対応します。<br>
+	 * @param resourceDirPath クラスパスディレクトリパス(先頭スラッシュあり)
+	 * @param extension 対象拡張子フィルタ(例: ".yaml"、nullで全ファイル)
+	 * @return ファイル名→バイト配列のマップ(ファイル名昇順)
+	 * @throws IOException リソースが見つからない場合または読み込みに失敗した場合にスローされます
+	 */
+	public static Map<String, byte[]> readResourceDirectory(String resourceDirPath, String extension) throws IOException {
+		URL dirUrl = ResourceUtils.class.getResource(resourceDirPath);
+		if (dirUrl == null) {
+			return Map.of();
+		}
+		Map<String, byte[]> result = new LinkedHashMap<>();
+		try {
+			URI dirUri = dirUrl.toURI();
+			if ("jar".equals(dirUri.getScheme())) {
+				try (FileSystem jarFs = FileSystems.newFileSystem(dirUri, Map.of())) {
+					Path jarDir = jarFs.getPath(resourceDirPath);
+					collectFiles(jarDir, extension, result);
+				}
+			} else {
+				collectFiles(Path.of(dirUri), extension, result);
+			}
+		} catch (URISyntaxException e) {
+			throw new IOException("リソースURIの解析に失敗しました(" + resourceDirPath + ")。", e);
+		}
+		return result;
+	}
+
+	/**
+	 * ディレクトリ直下のファイルをマップに収集します。<br>
+	 */
+	private static void collectFiles(Path dir, String extension, Map<String, byte[]> result) throws IOException {
+		try (Stream<Path> walk = Files.list(dir)) {
+			walk //
+					.filter(p -> !Files.isDirectory(p)) //
+					.filter(p -> extension == null || p.getFileName().toString().endsWith(extension)) //
+					.sorted(Comparator.comparing(p -> p.getFileName().toString())) //
+					.forEach(p -> {
+						try {
+							result.put(p.getFileName().toString(), Files.readAllBytes(p));
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						}
+					});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
 		}
 	}
 

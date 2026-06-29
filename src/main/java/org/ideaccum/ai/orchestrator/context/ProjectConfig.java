@@ -1,21 +1,19 @@
 package org.ideaccum.ai.orchestrator.context;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Properties;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.ideaccum.ai.orchestrator.Constants;
+
+import tools.jackson.core.type.TypeReference;
 
 /**
  * プロジェクト設定情報管理クラスです。<br>
  * <p>
- * プロジェクトディレクトリ配下の{@code .orchestrator/project.properties}を読み書きします。<br>
+ * プロジェクトディレクトリ配下の{@code .orchestrator/project.yaml}を読み書きします。<br>
  * </p>
  *
  * @author Kitagawa<br>
@@ -25,17 +23,17 @@ import java.util.Properties;
  * 2026/05/01	Kitagawa		新規作成
  *-->
  */
-public class ProjectConfig {
+public class ProjectConfig implements Constants {
 
 	/** プロパティオブジェクト */
-	private Properties properties;
+	private Map<String, String> properties;
 
 	/**
 	 * コンストラクタ<br>
 	 * @param configFile プロジェクト設定ファイルパス
 	 */
 	public ProjectConfig(Path configFile) {
-		this.properties = configFile == null ? new Properties() : load(configFile);
+		this.properties = configFile == null ? new LinkedHashMap<>() : load(configFile);
 	}
 
 	/**
@@ -43,18 +41,16 @@ public class ProjectConfig {
 	 * @param configFile 設定ファイルパス
 	 * @return プロパティオブジェクト
 	 */
-	private Properties load(Path configFile) {
-		Properties properties = new Properties();
-		if (configFile == null || !Files.exists(configFile)) {
-			properties = new Properties();
-			return properties;
+	private Map<String, String> load(Path configFile) {
+		if (!Files.exists(configFile)) {
+			return new LinkedHashMap<>();
 		}
-		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
-			properties.load(reader);
+		try {
+			return YAML.readValue(configFile.toFile(), new TypeReference<LinkedHashMap<String, String>>() {
+			});
 		} catch (Throwable e) {
 			throw new InternalError(String.format("プロジェクト設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
 		}
-		return properties;
 	}
 
 	/**
@@ -63,9 +59,7 @@ public class ProjectConfig {
 	 * @throws IOException プロパティファイル保存で予期せぬ例外が発生した場合にスローされます
 	 */
 	public void save(Path configFile) throws IOException {
-		try (OutputStream os = new BufferedOutputStream(new FileOutputStream(configFile.toFile()))) {
-			properties.store(os, "");
-		}
+		YAML.writeValue(configFile.toFile(), properties);
 	}
 
 	/**
@@ -74,7 +68,7 @@ public class ProjectConfig {
 	 */
 	public String getName() {
 		String key = "project.name";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		return raw;
 	}
 
@@ -84,7 +78,7 @@ public class ProjectConfig {
 	 */
 	public void setName(String name) {
 		String key = "project.name";
-		properties.setProperty(key, name);
+		properties.put(key, name);
 	}
 
 	/**
@@ -93,7 +87,7 @@ public class ProjectConfig {
 	 */
 	public String getTitle() {
 		String key = "project.title";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		return raw;
 	}
 
@@ -103,7 +97,7 @@ public class ProjectConfig {
 	 */
 	public void setTitle(String title) {
 		String key = "project.title";
-		properties.setProperty(key, title);
+		properties.put(key, title);
 	}
 
 	/**
@@ -112,7 +106,7 @@ public class ProjectConfig {
 	 */
 	public boolean isExternalEnabled() {
 		String key = "project.external.enabled";
-		String raw = properties.getProperty(key, "false");
+		String raw = properties.getOrDefault(key, "false");
 		return Boolean.parseBoolean(raw);
 	}
 
@@ -122,7 +116,7 @@ public class ProjectConfig {
 	 */
 	public void setExternalEnabled(boolean enabled) {
 		String key = "project.external.enabled";
-		properties.setProperty(key, String.valueOf(enabled));
+		properties.put(key, String.valueOf(enabled));
 	}
 
 	/**
@@ -131,7 +125,7 @@ public class ProjectConfig {
 	 */
 	public String getExternalPath() {
 		String key = "project.external.path";
-		String raw = properties.getProperty(key, "");
+		String raw = properties.getOrDefault(key, "");
 		return raw.isBlank() ? null : raw;
 	}
 
@@ -141,6 +135,6 @@ public class ProjectConfig {
 	 */
 	public void setExternalPath(String path) {
 		String key = "project.external.path";
-		properties.setProperty(key, path == null ? "" : path);
+		properties.put(key, path == null ? "" : path);
 	}
 }

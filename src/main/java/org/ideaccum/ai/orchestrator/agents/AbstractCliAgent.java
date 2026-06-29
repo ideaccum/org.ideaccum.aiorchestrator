@@ -344,7 +344,7 @@ public abstract class AbstractCliAgent extends AgentAdapter {
 						 * レスポンス内容がJSONでない場合はスキップ
 						 */
 						try {
-							JsonNode node = MAPPER.readTree(response);
+							JsonNode node = JSON.readTree(response);
 							if (!node.isObject() && !node.isArray()) {
 								continue;
 							}

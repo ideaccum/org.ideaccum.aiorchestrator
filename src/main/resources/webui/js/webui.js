@@ -34,33 +34,188 @@ class WebUI {
 	 */
 	static initNumberFields() {
 		document.querySelectorAll('input[type="number"].input-field').forEach((input) => {
+			/*
+			 * すでにラップ済みの場合はスキップ
+			 */
 			if (input.closest(".number-input-wrapper")) {
 				return;
 			}
-			const wrapper = document.createElement("div");
-			wrapper.className = "number-input-wrapper";
-			input.parentNode.insertBefore(wrapper, input);
-			wrapper.appendChild(input);
 
-			const btns = document.createElement("div");
-			btns.className = "number-spin-btns";
-			btns.innerHTML =
+			/*
+			 * スピンボタンラッパー生成
+			 */
+			const wrapperEl = document.createElement("div");
+			wrapperEl.className = "number-input-wrapper";
+			input.parentNode.insertBefore(wrapperEl, input);
+			wrapperEl.appendChild(input);
+
+			/*
+			 * スピンボタン生成
+			 */
+			const spinBtns = document.createElement("div");
+			spinBtns.className = "number-spin-btns";
+			spinBtns.innerHTML =
 				'<button type="button" class="number-spin-btn number-spin-up" tabindex="-1"></button>' + //
 				'<button type="button" class="number-spin-btn number-spin-down" tabindex="-1"></button>'; //
-			wrapper.appendChild(btns);
-			btns.querySelector(".number-spin-up").addEventListener("click", () => {
+			wrapperEl.appendChild(spinBtns);
+			spinBtns.querySelector(".number-spin-up").addEventListener("click", () => {
 				input.stepUp();
 				input.dispatchEvent(new Event("input", { bubbles: true }));
 				input.dispatchEvent(new Event("change", { bubbles: true }));
 				input.focus();
 			});
-			btns.querySelector(".number-spin-down").addEventListener("click", () => {
+			spinBtns.querySelector(".number-spin-down").addEventListener("click", () => {
 				input.stepDown();
 				input.dispatchEvent(new Event("input", { bubbles: true }));
 				input.dispatchEvent(new Event("change", { bubbles: true }));
 				input.focus();
 			});
 		});
+	}
+
+	/**
+	 * コンボボックスを初期化します。<br>
+	 * フォーカス・入力・キーボード操作・外クリックのイベントハンドラを登録します。<br>
+	 * @param {HTMLElement} comboboxEl - .combobox ラッパー要素
+	 */
+	static initCombobox(comboboxEl) {
+		const comboInputEl = comboboxEl.querySelector(".combobox-input");
+		const comboListEl = comboboxEl.querySelector(".combobox-list");
+		const comboToggleEl = comboboxEl.querySelector(".combobox-toggle");
+
+		/*
+		 * リスト開閉ボタンイベント
+		 */
+		comboToggleEl.addEventListener("click", () => {
+			if (comboInputEl.disabled) {
+				return;
+			}
+			if (comboListEl.classList.contains("hidden")) {
+				WebUI.#comboboxShow(comboboxEl);
+			} else {
+				WebUI.#comboboxHide(comboboxEl);
+			}
+		});
+
+		/*
+		 * フォーカスイベント
+		 */
+		comboInputEl.addEventListener("focus", () => {
+			if (!comboInputEl.disabled) {
+				WebUI.#comboboxShow(comboboxEl);
+			}
+		});
+
+		/*
+		 * 入力イベント
+		 */
+		comboInputEl.addEventListener("input", () => {
+			WebUI.#comboboxFilter(comboboxEl);
+		});
+
+		/*
+		 * コンボボックス外クリックイベント
+		 */
+		document.addEventListener("click", (event) => {
+			if (!comboboxEl.contains(event.target)) {
+				WebUI.#comboboxHide(comboboxEl);
+			}
+		});
+
+		/*
+		 * キーボード操作イベント
+		 */
+		comboInputEl.addEventListener("keydown", (event) => {
+			const items = Array.from(comboListEl.querySelectorAll("li:not(.hidden)"));
+			const index = items.findIndex((li) => li.classList.contains("combobox-active"));
+			if (event.key === "ArrowDown") {
+				event.preventDefault();
+				WebUI.#comboboxShow(comboboxEl);
+				const next = index < items.length - 1 ? index + 1 : 0;
+				items.forEach((li) => li.classList.remove("combobox-active"));
+				if (items[next]) {
+					items[next].classList.add("combobox-active");
+					items[next].scrollIntoView({ block: "nearest" });
+				}
+			} else if (event.key === "ArrowUp") {
+				event.preventDefault();
+				WebUI.#comboboxShow(comboboxEl);
+				const prev = index > 0 ? index - 1 : items.length - 1;
+				items.forEach((li) => li.classList.remove("combobox-active"));
+				if (items[prev]) {
+					items[prev].classList.add("combobox-active");
+					items[prev].scrollIntoView({ block: "nearest" });
+				}
+			} else if (event.key === "Enter") {
+				const activeItem = comboListEl.querySelector("li.combobox-active");
+				if (activeItem && !comboListEl.classList.contains("hidden")) {
+					event.preventDefault();
+					comboInputEl.value = activeItem.dataset.value;
+					WebUI.#comboboxHide(comboboxEl);
+				}
+			} else if (event.key === "Escape") {
+				WebUI.#comboboxHide(comboboxEl);
+			}
+		});
+	}
+
+	/**
+	 * コンボボックスの候補リストを更新します。<br>
+	 * @param {HTMLElement} comboboxEl - .combobox ラッパー要素
+	 * @param {string[]} options - 候補文字列の配列
+	 */
+	static updateComboboxOptions(comboboxEl, options) {
+		const inputEl = comboboxEl.querySelector(".combobox-input");
+		const listEl = comboboxEl.querySelector(".combobox-list");
+		listEl.innerHTML = "";
+		(options || []).forEach((opt) => {
+			const li = document.createElement("li");
+			li.dataset.value = opt;
+			li.textContent = opt;
+			li.addEventListener("click", () => {
+				inputEl.value = opt;
+				WebUI.#comboboxHide(comboboxEl);
+				inputEl.focus();
+			});
+			listEl.appendChild(li);
+		});
+	}
+
+	/**
+	 * コンボボックスの候補リストを表示します。<br>
+	 */
+	static #comboboxShow(comboboxEl) {
+		const listEl = comboboxEl.querySelector(".combobox-list");
+		listEl.querySelectorAll("li").forEach((li) => li.classList.remove("hidden", "combobox-active"));
+		listEl.classList.remove("hidden");
+	}
+
+	/**
+	 * コンボボックスの候補リストを非表示にします。<br>
+	 */
+	static #comboboxHide(comboboxEl) {
+		const listEl = comboboxEl.querySelector(".combobox-list");
+		listEl.classList.add("hidden");
+		listEl.querySelectorAll("li.combobox-active").forEach((li) => li.classList.remove("combobox-active"));
+	}
+
+	/**
+	 * 入力テキストでコンボボックスの候補リストをフィルタします。<br>
+	 */
+	static #comboboxFilter(comboboxEl) {
+		const inputEl = comboboxEl.querySelector(".combobox-input");
+		const listEl = comboboxEl.querySelector(".combobox-list");
+		const filter = inputEl.value.toLowerCase();
+		let hasVisible = false;
+		listEl.querySelectorAll("li").forEach((li) => {
+			const match = !filter || li.dataset.value.toLowerCase().includes(filter);
+			li.classList.toggle("hidden", !match);
+			if (match) {
+				hasVisible = true;
+			}
+		});
+		listEl.querySelectorAll("li.combobox-active").forEach((li) => li.classList.remove("combobox-active"));
+		listEl.classList.toggle("hidden", !hasVisible);
 	}
 
 	/**
@@ -319,5 +474,49 @@ class WebUI {
 	 */
 	static scrollBottom(element) {
 		element.scrollTop = element.scrollHeight;
+	}
+
+	/**
+	 * 指定要素のスクロール位置が最下部付近かを判定します。<br>
+	 * @param {HTMLElement} element - 判定対象要素
+	 * @param {number} [threshold=80] - 最下部とみなす余白(px)
+	 * @returns {boolean} 最下部付近の場合にtrue
+	 */
+	static isNearBottom(element, threshold = 80) {
+		return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+	}
+
+	/**
+	 * 指定要素が最下部付近の場合のみ最下部へスクロールします。<br>
+	 * @param {HTMLElement} element - スクロール対象要素
+	 * @param {number} [threshold=80] - 最下部とみなす余白(px)
+	 */
+	static scrollBottomIfNear(element, threshold = 80) {
+		if (WebUI.isNearBottom(element, threshold)) {
+			element.scrollTop = element.scrollHeight;
+		}
+	}
+
+	/**
+	 * クリップボードコピーボタンを生成して返却します。<br>
+	 * @param {() => string} getTextFn - クリック時にコピーするテキストを返す関数
+	 * @returns {HTMLButtonElement} コピーボタン要素
+	 */
+	static createCopyButton(getTextFn) {
+		const copyBtn = document.createElement("button");
+		copyBtn.className = "btn-clip-copy";
+		copyBtn.type = "button";
+		copyBtn.title = "クリップボードにコピー";
+		copyBtn.innerHTML = Constants.ICON_COPY;
+		copyBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			const text = getTextFn() || "";
+			navigator.clipboard.writeText(text).then(() => {
+				const preview = text.replace(/[\r\n]/g, "").slice(0, 36);
+				const message = "クリップボードにコピーしました" + (preview ? "\n「" + preview + "...」" : "");
+				WebUI.showInfo(message);
+			});
+		});
+		return copyBtn;
 	}
 }

@@ -285,6 +285,36 @@ class WebAPI {
 	}
 
 	/**
+	 * プロンプトプリセット一覧を取得します。<br>
+	 * @param {Object} payload - リクエストパラメータ(キーなし)
+	 * @param {boolean} [interactive=false] - エラーメッセージを表示する場合にtrueを指定
+	 */
+	static async getPresetPrompts(payload, interactive) {
+		const result = await WebAPI.#post(Constants.API_GET_PRESET_PROMPTS, payload, Constants.WEBAPI_ABORT_TIMEOUT, interactive);
+		return result;
+	}
+
+	/**
+	 * エージェントモデルプリセット一覧を取得します。<br>
+	 * @param {Object} payload - リクエストパラメータ(キーなし)
+	 * @param {boolean} [interactive=false] - エラーメッセージを表示する場合にtrueを指定
+	 */
+	static async getAgentModels(payload, interactive) {
+		const result = await WebAPI.#post(Constants.API_GET_AGENT_MODELS, payload, Constants.WEBAPI_ABORT_TIMEOUT, interactive);
+		return result;
+	}
+
+	/**
+	 * エージェント性質プリセット一覧を取得します。<br>
+	 * @param {Object} payload - リクエストパラメータ(キーなし)
+	 * @param {boolean} [interactive=false] - エラーメッセージを表示する場合にtrueを指定
+	 */
+	static async getAgentPersonalities(payload, interactive) {
+		const result = await WebAPI.#post(Constants.API_GET_AGENT_PERSONALITIES, payload, Constants.WEBAPI_ABORT_TIMEOUT, interactive);
+		return result;
+	}
+
+	/**
 	 * エージェント一覧を取得します。<br>
 	 * @param {Object} payload - リクエストパラメータ
 	 * @param {string} payload.project - プロジェクト名

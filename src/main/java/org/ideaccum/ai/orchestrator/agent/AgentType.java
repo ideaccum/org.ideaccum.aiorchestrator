@@ -25,7 +25,6 @@ public enum AgentType {
 
 	/** CaludeCode CLI */
 	CLAUDE_CLI(ClaudeCliAgent.class, "claude-cli"),
-	//CLAUDE_CLI(ClaudeCliResidentAgent.class, "claude-cli"),
 
 	/** Gemini CLI */
 	GEMINI_CLI(GeminiCliAgent.class, "gemini-cli"),

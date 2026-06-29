@@ -13,6 +13,7 @@
  * 2026/05/18	Kitagawa		theme_darkに合わせて再設計(明度階層を正しく対応)
  * 2026/05/20	Kitagawa		意味的なテーマ変数体系へ再設計
  * 2026/05/26	Kitagawa		VSCode Lightテーマベースに見直し
+ * 2026/06/29	Kitagawa		GitHub/Linear/Tailwind UIベースにモダン化再設計
  *-->
  */
 /*
@@ -22,90 +23,93 @@
  */
 :root {
 	/* ---- ページ ---- */
-	--theme-page-bg: #ffffff; /* ページ背景色 */
-	--theme-page-text: #3b3b3b; /* ページ本文テキスト色 */
-	--theme-page-text-sub: #616161; /* ページ補足テキスト色 */
+	--theme-page-bg: #f6f7f9; /* ページ背景色: 薄いクールグレー(フィールド白との差別化) */
+	--theme-page-text: #1a1d23; /* ページ本文テキスト色: 深みのあるダークグレー */
+	--theme-page-text-sub: #6b7280; /* ページ補足テキスト色: ミディアムグレー */
 
 	/* ---- ページヘッダー ---- */
-	--theme-header-bg: #f3f3f3; /* ページヘッダー背景色 */
-	--theme-header-nav-text: rgba(0, 0, 0, 0.6); /* ヘッダーナビゲーション文字色 */
-	--theme-header-nav-text-active: rgba(0, 0, 0, 0.8); /* ヘッダーナビゲーション文字色(アクティブ) */
+	--theme-header-bg: #edeef0; /* ページヘッダー背景色: ページより少し濃いグレー */
+	--theme-header-nav-text: rgba(0, 0, 0, 0.62); /* ヘッダーナビゲーション文字色 */
+	--theme-header-nav-text-active: rgba(0, 0, 0, 0.85); /* ヘッダーナビゲーション文字色(アクティブ) */
 	--theme-header-nav-bg-hover: rgba(0, 0, 0, 0.07); /* ヘッダーナビゲーション背景色(ホバー) */
 
 	/* ---- ノーティスバー ---- */
-	--theme-notice-bar-bg: #ececec; /* ノーティスバー背景色 */
-	--theme-notice-bar-border: #e7e7e7; /* ノーティスバーボーダー色 */
+	--theme-notice-bar-bg: #e8eaed; /* ノーティスバー背景色 */
+	--theme-notice-bar-border: #d8dadd; /* ノーティスバーボーダー色 */
 
 	/* ---- タブバー ---- */
-	--theme-tab-bar-bg: #ececec; /* タブバー背景色 */
-	--theme-tab-active-bg: #ffffff; /* アクティブタブ・セクションヘッダー背景色 */
+	--theme-tab-bar-bg: #e8eaed; /* タブバー背景色 */
+	--theme-tab-active-bg: #f6f7f9; /* アクティブタブ背景色 */
 
 	/* ---- スプリットレイアウト ---- */
-	--theme-split-panel-bg: #f3f3f3; /* 左パネル背景色 */
-	--theme-split-list-bg: #ffffff; /* 左パネルリスト背景色 */
-	--theme-split-selected-bg: #0060c0; /* リスト選択アイテム背景色 */
-	--theme-split-selected-border: #0078d4; /* リスト選択アイテムボーダー色 */
+	--theme-split-panel-bg: #edeef0; /* 左パネル背景色 */
+	--theme-split-list-bg: #f2f3f5; /* 左パネルリスト背景色 */
+	--theme-split-selected-bg: #0969da; /* リスト選択アイテム背景色 */
+	--theme-split-selected-border: #0969da; /* リスト選択アイテムボーダー色 */
 	--theme-split-selected-text: #ffffff; /* リスト選択アイテムテキスト色 */
 
 	/* ---- ボタン ---- */
-	--theme-btn-bg: #0078d4; /* ボタン背景色 */
+	--theme-btn-bg: #0969da; /* ボタン背景色 */
 	--theme-btn-text: #ffffff; /* ボタン文字色 */
-	--theme-btn-disabled-bg: #e1e1e1; /* 非活性ボタン背景色 */
-	--theme-btn-disabled-text: #a5a5a5; /* 非活性ボタン文字色 */
+	--theme-btn-disabled-bg: #e2e4e8; /* 非活性ボタン背景色 */
+	--theme-btn-disabled-text: #9ca3af; /* 非活性ボタン文字色 */
+	--theme-btn-preset-bg: #e4eff6; /* プリセットボタン背景色(アクセント寄りのグレー) */
+	--theme-btn-preset-text: #4480a0; /* プリセットボタン文字色 */
+	--theme-btn-preset-border: #8ab8d0; /* プリセットボタンボーダー色(アクセントを抑えたグレーブルー) */
 
 	/* ---- フォームフィールド ---- */
-	--theme-field-bg: #ffffff; /* フォームフィールド背景色 */
-	--theme-field-text: #3b3b3b; /* フォームフィールドテキスト色 */
-	--theme-field-disabled-bg: #f3f3f3; /* 非活性・読み取り専用フィールド背景色 */
-	--theme-field-disabled-text: #a5a5a5; /* 非活性・読み取り専用フィールドテキスト色 */
-	--theme-field-label: #3b3b3b; /* フォームラベル文字色 */
-	--theme-field-label-note: #bf8803; /* フォームラベル注記文字色 */
-	--theme-code-bg: #f3f3f3; /* コードブロック背景色 */
+	--theme-field-bg: #ffffff; /* フォームフィールド背景色: 白(ページ背景グレーと明確に区別) */
+	--theme-field-text: #1a1d23; /* フォームフィールドテキスト色 */
+	--theme-field-disabled-bg: #f0f2f5; /* 非活性・読み取り専用フィールド背景色 */
+	--theme-field-disabled-text: #9ca3af; /* 非活性・読み取り専用フィールドテキスト色 */
+	--theme-field-label: #374151; /* フォームラベル文字色 */
+	--theme-field-label-note: #b45309; /* フォームラベル注記文字色 */
+	--theme-code-bg: #f0f2f5; /* コードブロック背景色 */
 
 	/* ---- カードレイアウト ---- */
-	--theme-card-bg: #f3f3f3; /* カード背景色(ボディ) */
-	--theme-card-header-bg: #ececec; /* カードヘッダー背景色 */
-	--theme-card-footer-bg: #e8e8e8; /* カードフッター背景色 */
-	--theme-card-border: rgba(100, 100, 100, 0.25); /* カードボーダー色 */
+	--theme-card-bg: #ffffff; /* カード背景色: 白(ページ背景から浮き上がる) */
+	--theme-card-header-bg: #f8f9fb; /* カードヘッダー背景色 */
+	--theme-card-footer-bg: #f2f3f5; /* カードフッター背景色 */
+	--theme-card-border: rgba(0, 0, 0, 0.11); /* カードボーダー色 */
 
 	/* ---- ボーダー ---- */
-	--theme-border: #d4d4d4; /* 汎用ボーダー色 */
-	--theme-border-sub: #e7e7e7; /* 内部区切り線色 */
+	--theme-border: #c8cdd4; /* 汎用ボーダー色: やや濃く視認性向上 */
+	--theme-border-sub: #e2e4e8; /* 内部区切り線色 */
 
 	/* ---- タグ ---- */
-	--theme-tag-bg: #0078d4; /* タグ背景色 */
+	--theme-tag-bg: #0969da; /* タグ背景色 */
 	--theme-tag-text: #ffffff; /* タグ文字色 */
-	--theme-tag-border: #0078d4; /* タグボーダー色 */
+	--theme-tag-border: #0969da; /* タグボーダー色 */
 
 	/* ---- アクセント ---- */
-	--theme-accent: #0078d4; /* リンク・スピナー等汎用アクセント */
-	--theme-accent-bg: #cce5ff; /* アクセント背景色 */
+	--theme-accent: #0969da; /* リンク・スピナー等汎用アクセント */
+	--theme-accent-bg: #dbeafe; /* アクセント背景色 */
 
 	/* ---- 状態色: 情報・成功 ---- */
-	--theme-info: #0078d4;
-	--theme-info-bg: #deeeff;
+	--theme-info: #0969da;
+	--theme-info-bg: #dbeafe;
 
 	/* ---- 状態色: 通知・処理中 ---- */
-	--theme-notice: #388a34;
-	--theme-notice-bg: #e2f0df;
+	--theme-notice: #16a34a;
+	--theme-notice-bg: #dcfce7;
 
 	/* ---- 状態色: 警告 ---- */
-	--theme-warn: #bf8803;
-	--theme-warn-bg: #fff8e1;
+	--theme-warn: #d97706;
+	--theme-warn-bg: #fef3c7;
 
 	/* ---- 状態色: エラー ---- */
-	--theme-error: #e51400;
-	--theme-error-bg: #fde7e9;
+	--theme-error: #dc2626;
+	--theme-error-bg: #fee2e2;
 
 	/* ---- 状態色: 非活性 ---- */
-	--theme-idle: #a5a5a5;
-	--theme-idle-bg: #ececec;
-	--theme-toggle-off: #d1d1d6; /* トグルスイッチOFF時トラック色 */
+	--theme-idle: #9ca3af;
+	--theme-idle-bg: #f2f3f5;
+	--theme-toggle-off: #d1d5db; /* トグルスイッチOFF時トラック色 */
 
 	/* ---- 新規アイテム ---- */
-	--theme-new-item-bg: #e8f0fe;
-	--theme-new-item-border: #0078d4;
+	--theme-new-item-bg: #eff6ff;
+	--theme-new-item-border: #0969da;
 
 	/* ---- 特殊 ---- */
-	--theme-owner-avator: #0078d4;
+	--theme-owner-avator: #0969da;
 }

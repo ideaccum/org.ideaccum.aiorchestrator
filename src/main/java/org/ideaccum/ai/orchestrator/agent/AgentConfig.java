@@ -1,20 +1,16 @@
 package org.ideaccum.ai.orchestrator.agent;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 
 import org.ideaccum.ai.orchestrator.Constants;
+
+import tools.jackson.core.type.TypeReference;
 
 /**
  * エージェント個別環境定義アクセス用のクラスです。<br>
@@ -32,14 +28,14 @@ import org.ideaccum.ai.orchestrator.Constants;
 public class AgentConfig implements Constants {
 
 	/** プロパティオブジェクト */
-	private Properties properties;
+	private Map<String, String> properties;
 
 	/**
 	 * コンストラクタ<br>
 	 * @param configFile エージェント設定ファイルパス
 	 */
 	public AgentConfig(Path configFile) {
-		this.properties = configFile == null ? new Properties() : load(configFile);
+		this.properties = configFile == null ? new LinkedHashMap<>() : load(configFile);
 	}
 
 	/**
@@ -54,17 +50,16 @@ public class AgentConfig implements Constants {
 	 * @param configFile 設定ファイルパス
 	 * @return プロパティオブジェクト
 	 */
-	private Properties load(Path configFile) {
-		Properties properties = new Properties();
-		if (configFile == null || !Files.exists(configFile)) {
+	private Map<String, String> load(Path configFile) {
+		if (!Files.exists(configFile)) {
 			throw new InternalError(String.format("エージェント設定ファイル(%s)が見つかりません。", configFile.toString()));
 		}
-		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
-			properties.load(reader);
+		try {
+			return YAML.readValue(configFile.toFile(), new TypeReference<LinkedHashMap<String, String>>() {
+			});
 		} catch (Throwable e) {
 			throw new InternalError(String.format("エージェント設定ファイル(%s)の読み込みに失敗しました。", configFile.toString()), e);
 		}
-		return properties;
 	}
 
 	/**
@@ -73,9 +68,7 @@ public class AgentConfig implements Constants {
 	 * @throws IOException プロパティファイル保存で予期せぬ例外が発生した場合にスローされます
 	 */
 	public void save(Path configFile) throws IOException {
-		try (OutputStream os = new BufferedOutputStream(new FileOutputStream(configFile.toFile()))) {
-			properties.store(os, "");
-		}
+		YAML.writeValue(configFile.toFile(), properties);
 	}
 
 	/**
@@ -83,7 +76,7 @@ public class AgentConfig implements Constants {
 	 * @param key プロパティキー
 	 */
 	private void checkRequired(String key) {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			throw new InternalError(String.format("環境定義キー(%s)が指定されていません。", key));
 		}
@@ -94,7 +87,7 @@ public class AgentConfig implements Constants {
 	 * @param key プロパティキー
 	 */
 	private void checkBoolean(String key) {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			return;
 		}
@@ -111,7 +104,7 @@ public class AgentConfig implements Constants {
 	 */
 	public String getName() {
 		String key = "agent.name";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return raw;
 	}
@@ -122,7 +115,7 @@ public class AgentConfig implements Constants {
 	 */
 	public void setName(String name) {
 		String key = "agent.name";
-		properties.setProperty(key, name);
+		properties.put(key, name);
 	}
 
 	/**
@@ -131,7 +124,7 @@ public class AgentConfig implements Constants {
 	 */
 	public String getType() {
 		String key = "agent.type";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return raw;
 	}
@@ -142,7 +135,7 @@ public class AgentConfig implements Constants {
 	 */
 	public void setType(String type) {
 		String key = "agent.type";
-		properties.setProperty(key, type);
+		properties.put(key, type);
 	}
 
 	/**
@@ -155,18 +148,18 @@ public class AgentConfig implements Constants {
 	 */
 	public String getModel() {
 		String key = "agent.model";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		return raw;
 	}
 
 	/**
-	 * エージェントモデルを設定します。
+	 * エージェントモデルを設定します。<br>
 	 * @param model エージェントモデル
 	 */
 	public void setModel(String model) {
 		String key = "agent.model";
-		properties.setProperty(key, model);
+		properties.put(key, model);
 	}
 
 	/**
@@ -175,19 +168,19 @@ public class AgentConfig implements Constants {
 	 */
 	public boolean isLeader() {
 		String key = "agent.leader";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "false");
 		checkRequired(key);
 		checkBoolean(key);
 		return Boolean.parseBoolean(raw);
 	}
 
 	/**
-	 * エージェントリーダーフラグを設定します。
+	 * エージェントリーダーフラグを設定します。<br>
 	 * @param leader エージェントリーダーフラグ
 	 */
 	public void setLeader(boolean leader) {
 		String key = "agent.leader";
-		properties.setProperty(key, Boolean.toString(leader));
+		properties.put(key, Boolean.toString(leader));
 	}
 
 	/**
@@ -196,18 +189,18 @@ public class AgentConfig implements Constants {
 	 */
 	public String getRole() {
 		String key = "agent.role";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return raw;
 	}
 
 	/**
-	 * エージェント役割名を設定します。
+	 * エージェント役割名を設定します。<br>
 	 * @param role エージェント役割名
 	 */
 	public void setRole(String role) {
 		String key = "agent.role";
-		properties.setProperty(key, role);
+		properties.put(key, role);
 	}
 
 	/**
@@ -216,18 +209,18 @@ public class AgentConfig implements Constants {
 	 */
 	public String getPersonality() {
 		String key = "agent.personality";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return raw;
 	}
 
 	/**
-	 * エージェント性質を設定します。
+	 * エージェント性質を設定します。<br>
 	 * @param personality エージェント性質
 	 */
 	public void setPersonality(String personality) {
 		String key = "agent.personality";
-		properties.setProperty(key, personality);
+		properties.put(key, personality);
 	}
 
 	/**
@@ -236,7 +229,7 @@ public class AgentConfig implements Constants {
 	 */
 	public List<String> getExtraArgs() {
 		String key = "agent.extra.args";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		if (raw == null || raw.isBlank()) {
 			return List.of();
@@ -245,15 +238,15 @@ public class AgentConfig implements Constants {
 	}
 
 	/**
-	 * エージェントCLI追加引数を設定します。
+	 * エージェントCLI追加引数を設定します。<br>
 	 * @param extraArgs エージェントCLI追加引数
 	 */
 	public void setExtraArgs(List<String> extraArgs) {
 		String key = "agent.extra.args";
 		if (extraArgs == null || extraArgs.isEmpty()) {
-			properties.setProperty(key, "");
+			properties.put(key, "");
 		} else {
-			properties.setProperty(key, String.join(" ", extraArgs));
+			properties.put(key, String.join(" ", extraArgs));
 		}
 	}
 }

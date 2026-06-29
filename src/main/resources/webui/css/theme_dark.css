@@ -50,6 +50,9 @@
 	--theme-btn-text: #ffffff; /* ボタン文字色 */
 	--theme-btn-disabled-bg: #3c3c3c; /* 非活性ボタン背景色 */
 	--theme-btn-disabled-text: #6c6c6c; /* 非活性ボタン文字色 */
+	--theme-btn-preset-bg: #1c2d3a; /* プリセットボタン背景色(アクセント寄りのグレー) */
+	--theme-btn-preset-text: #5c8db0; /* プリセットボタン文字色 */
+	--theme-btn-preset-border: #2a4a62; /* プリセットボタンボーダー色(アクセントを抑えたグレーブルー) */
 
 	/* ---- フォームフィールド ---- */
 	--theme-field-bg: #3c3c3c; /* フォームフィールド背景色 */

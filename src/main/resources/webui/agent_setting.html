@@ -116,7 +116,11 @@
 
 					<div class="form-row">
 						<label class="form-label" for="field-model">モデル</label>
-						<input id="field-model" class="input-field" type="text" placeholder="省略時はデフォルト（例: sonnet, opus, haiku）" maxlength="32" />
+						<div class="combobox" id="field-model-combobox">
+							<input id="field-model" class="input-field combobox-input" type="text" placeholder="省略時はデフォルト（例: sonnet, opus, haikuなど） ※リスト選択のほか、手動入力も可能です" maxlength="32" autocomplete="off" />
+							<button class="combobox-toggle" type="button" tabindex="-1" aria-label="モデル候補を表示">▾</button>
+							<ul class="combobox-list scrollbar-thin hidden" role="listbox"></ul>
+						</div>
 					</div>
 
 					<div class="form-row">
@@ -138,7 +142,12 @@
 
 					<div class="form-row">
 						<label class="form-label" for="field-personality">性質</label>
-						<textarea id="field-personality" class="input-field form-textarea" placeholder="- 必ず日本語で回答します。&#10;- ..."></textarea>
+						<div class="personality-field-group">
+							<div class="preset-row">
+								<span class="icon icon-hint preset-hint"></span>
+							</div>
+							<textarea id="field-personality" class="input-field form-textarea" placeholder="- 必ず日本語で回答します。&#10;- ..."></textarea>
+						</div>
 					</div>
 
 					<div id="form-row-session-id" class="form-row">

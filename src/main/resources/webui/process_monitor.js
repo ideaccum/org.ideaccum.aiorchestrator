@@ -61,6 +61,38 @@ class ProcessMonitorController {
 	}
 
 	/**
+	 * プロンプトプリセットボタンをサーバーから取得して描画します。<br>
+	 */
+	async #initPresetButtons() {
+		try {
+			/*
+			 * プロンプトプリセット取得
+			 */
+			await WebCtrl.doAwait(WebAPI.getPresetPrompts({}, false), {
+				onDone: (result) => {
+					const presetRowEl = this.#ownerCard.cardEl.querySelector(".preset-row");
+					const presets = result.data || [];
+					presets.forEach((preset) => {
+						const presetBtn = document.createElement("button");
+						presetBtn.className = "btn btn-preset";
+						presetBtn.type = "button";
+						presetBtn.textContent = preset.label || "";
+						presetBtn.addEventListener("click", () => {
+							if (!this.#ownerCard.promptTextarea.disabled) {
+								this.#ownerCard.promptTextarea.value = (preset.prompt || "").trimEnd();
+								this.#ownerCard.promptTextarea.focus();
+							}
+						});
+						presetRowEl.appendChild(presetBtn);
+					});
+				},
+			});
+		} catch (e) {
+			WebUI.catchFatal(e);
+		}
+	}
+
+	/**
 	 * オーナーカードを初期化して現在のオーケストレーターステータスに合わせて状態を設定します。<br>
 	 */
 	async #initOwnerCard() {
@@ -82,23 +114,9 @@ class ProcessMonitorController {
 			this.#ownerCard.stopBtn.onclick = () => this.#onClickStop();
 
 			/*
-			 * プロンプトプリセットボタン初期化
+			 * プロンプトプリセットボタン読み込み
 			 */
-			const initPresetButton = (id, prompt) => {
-				const presetBtn = document.getElementById(id);
-				if (presetBtn) {
-					presetBtn.onclick = () => {
-						if (!this.#ownerCard.promptTextarea.disabled) {
-							this.#ownerCard.promptTextarea.value = prompt;
-							this.#ownerCard.promptTextarea.focus();
-						}
-					};
-				}
-			};
-			initPresetButton("owner-preset-check", Constants.PROMPT_CHECK_AGENTS);
-			initPresetButton("owner-preset-summary", Constants.PROMPT_SUMMARY);
-			initPresetButton("owner-preset-next", Constants.PROMPT_NEXT_ACTION);
-			initPresetButton("owner-preset-discussion-auto-pilot", Constants.PROMPT_NEXT_DISCUSSION_AUTO_PILOT);
+			await this.#initPresetButtons();
 
 			/*
 			 * オーケストレーターステータス取得＆オーナーカード状態設定
@@ -489,7 +507,7 @@ class ProcessMonitorController {
 				this.#ownerCard.historyEl.querySelector(".idle-placeholder")?.remove();
 				this.#ownerCard.turnCount++;
 				const turnBlockEl = document.createElement("div");
-				turnBlockEl.className = "turn-block";
+				turnBlockEl.className = "turn-block clip-copy-block";
 				turnBlockEl.innerHTML = `
 					<div class="turn-meta">
 						<span class="turn-num">Turn ${this.#ownerCard.turnCount}</span>
@@ -497,6 +515,7 @@ class ProcessMonitorController {
 					</div>
 					<div class="turn-text md-content streaming" data-turn-text></div>
 				`;
+				turnBlockEl.querySelector(".turn-meta").appendChild(WebUI.createCopyButton(() => turnBlockEl._rawText || ""));
 				this.#ownerCard.historyEl.appendChild(turnBlockEl);
 				this.#ownerCard.currentText = turnBlockEl.querySelector("[data-turn-text]");
 				this.#ownerCard.currentRaw = "";
@@ -535,7 +554,7 @@ class ProcessMonitorController {
 			 */
 			card.turnCount++;
 			const turnBlockEl = document.createElement("div");
-			turnBlockEl.className = "turn-block";
+			turnBlockEl.className = "turn-block clip-copy-block";
 			turnBlockEl.innerHTML = `
 				<div class="turn-meta">
 					<span class="turn-num">Turn ${card.turnCount}</span>
@@ -543,6 +562,7 @@ class ProcessMonitorController {
 				</div>
 				<div class="turn-text md-content streaming" data-turn-text></div>
 			`;
+			turnBlockEl.querySelector(".turn-meta").appendChild(WebUI.createCopyButton(() => turnBlockEl._rawText || ""));
 			card.bodyEl.appendChild(turnBlockEl);
 			card.currentText = turnBlockEl.querySelector("[data-turn-text]");
 			card.currentRaw = "";
@@ -673,6 +693,10 @@ class ProcessMonitorController {
 				}
 				this.#ownerCard.currentText.classList.remove("streaming");
 				this.#ownerCard.currentText.innerHTML = this.#ownerCard.currentRaw.trim() === "" ? '<em style="color:var(--color-text-muted)">(内容なし)</em>' : marked.parse(this.#ownerCard.currentRaw);
+				const ownerTurnBlock = this.#ownerCard.currentText.closest(".turn-block");
+				if (ownerTurnBlock) {
+					ownerTurnBlock._rawText = this.#ownerCard.currentRaw;
+				}
 				this.#ownerCard.currentText = null;
 				return;
 			}
@@ -692,6 +716,10 @@ class ProcessMonitorController {
 				card.currentText.classList.remove("streaming");
 				const filtered = Utils.filterKeywordLines(card.currentRaw);
 				card.currentText.innerHTML = filtered.trim() === "" ? '<em style="color:var(--color-text-muted)">(レスポンスなし)</em>' : marked.parse(filtered);
+				const agentTurnBlock = card.currentText.closest(".turn-block");
+				if (agentTurnBlock) {
+					agentTurnBlock._rawText = filtered;
+				}
 				card.currentText = null;
 			}
 			card.cardEl.classList.remove("is-processing", "is-error");

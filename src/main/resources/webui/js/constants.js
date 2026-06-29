@@ -61,19 +61,7 @@ class Constants {
 	static ICON_COPY = '<span class="icon icon-copy"></span>';
 
 	/** オーナーエージェント名(予約名) */
-	static OWNER_AGENT_NAME = "Owner";
-
-	/** プリセットプロンプト:エージェント存在確認 */
-	static PROMPT_CHECK_AGENTS = "各エージェントの稼働状況を確認してください。\n- トークンの不要な消費をさけるため、稼働状況確認以外のタスクは実行しないでください。\n- エージェント稼働確認はエージェント自身に必ず発言させてください。";
-
-	/** プリセットプロンプト:過去会話のサマリー */
-	static PROMPT_SUMMARY = "これまでの会話ログを振り返り、実施した作業の概要・現在の進捗状況・残タスクをまとめて報告してください。\n- リーダーのエージェントがこのタスクを実行してください。";
-
-	/** プリセットプロンプト:推奨される次の指示 */
-	static PROMPT_NEXT_ACTION = "現在の進捗状況を踏まえ、次に実施すべき推奨アクションを具体的に提案してください。\n- リーダーのエージェントがこのタスクを実行してください。";
-
-	/** プリセットプロンプト:自動運転議論 */
-	static PROMPT_NEXT_DISCUSSION_AUTO_PILOT = "AI搭載の自動運転について討論してください。\n自身の進行方向には子どもが飛び出してきています、それを避けようとすると対向車と正面衝突します。\n回避せずに子どもを犠牲にする行動、回避して自身と対向車の運転手が犠牲になる行動のパターンがありますが、どの行動が妥当ですか。\n尚、ブレーキをかけても間に合う状況にはなく、誰かが犠牲になります。";
+	static OWNER_AGENT_NAME = "User";
 
 	/** SSE接続URL */
 	static SSE_CONNECT_URL = "/sse/connect";
@@ -170,6 +158,15 @@ class Constants {
 
 	/** API URL(制御キーワード取得) */
 	static API_GET_CONTROL_KEYWORDS = "/api/get_control_keywords";
+
+	/** API URL(プロンプトプリセット一覧取得) */
+	static API_GET_PRESET_PROMPTS = "/api/get_preset_prompts";
+
+	/** API URL(エージェントモデルプリセット取得) */
+	static API_GET_AGENT_MODELS = "/api/get_agent_models";
+
+	/** API URL(エージェント性質プリセット取得) */
+	static API_GET_AGENT_PERSONALITIES = "/api/get_agent_personalities";
 
 	/** API URL(ログダウンロード) */
 	static API_DOWNLOAD_LOGS = "/api/download_logs";

@@ -66,9 +66,9 @@ public class Conversations implements Constants {
 			return;
 		}
 		try {
-			List<Conversation> loaded = MAPPER.readValue( //
+			List<Conversation> loaded = JSON.readValue( //
 					config.getAgentConversationLogfile(context.getProjectName()).toFile(), //
-					MAPPER.getTypeFactory().constructCollectionType(//
+					JSON.getTypeFactory().constructCollectionType(//
 							List.class, Conversation.class //
 					));
 			for (Conversation conversation : loaded) {
@@ -90,7 +90,7 @@ public class Conversations implements Constants {
 			if (!Files.exists(config.getAgentConversationLogfile(context.getProjectName()).getParent())) {
 				Files.createDirectories(config.getAgentConversationLogfile(context.getProjectName()).getParent());
 			}
-			MAPPER.writerWithDefaultPrettyPrinter().writeValue(config.getAgentConversationLogfile(context.getProjectName()).toFile(), entries);
+			JSON.writerWithDefaultPrettyPrinter().writeValue(config.getAgentConversationLogfile(context.getProjectName()).toFile(), entries);
 		} catch (IOException e) {
 			throw new InternalError("会話ログの保存に失敗しました", e);
 		}

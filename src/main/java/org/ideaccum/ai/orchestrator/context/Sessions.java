@@ -51,9 +51,9 @@ public class Sessions implements Constants {
 			return;
 		}
 		try {
-			Map<String, Session> loaded = MAPPER.readValue( //
+			Map<String, Session> loaded = JSON.readValue( //
 					config.getAgentSessionStore(projectName).toFile(), //
-					MAPPER.getTypeFactory().constructMapType(Map.class, String.class, Session.class) //
+					JSON.getTypeFactory().constructMapType(Map.class, String.class, Session.class) //
 			);
 			entries.putAll(loaded);
 		} catch (Throwable e) {
@@ -69,7 +69,7 @@ public class Sessions implements Constants {
 			if (!Files.exists(config.getAgentSessionStore(projectName).getParent())) {
 				Files.createDirectories(config.getAgentSessionStore(projectName).getParent());
 			}
-			MAPPER.writerWithDefaultPrettyPrinter().writeValue( //
+			JSON.writerWithDefaultPrettyPrinter().writeValue( //
 					config.getAgentSessionStore(projectName).toFile(), //
 					entries //
 			);

@@ -927,6 +927,133 @@ body:not(.has-project) .header-nav-requires-project {
 	pointer-events: none;
 	opacity: var(--opacity-disabled);
 }
+/* ---- コンボボックス（リスト＋テキスト入力） ---- */
+.combobox {
+	position: relative;
+	display: flex;
+}
+.combobox .combobox-input {
+	flex: 1;
+	min-width: 0;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	border-right: none;
+}
+.combobox-toggle {
+	flex-shrink: 0;
+	background: var(--color-field-bg);
+	color: var(--color-text-sub);
+	border: var(--border-width) solid var(--color-border);
+	border-top-right-radius: var(--radius-ui);
+	border-bottom-right-radius: var(--radius-ui);
+	padding: 0 var(--combobox-toggle-sp);
+	cursor: pointer;
+	font-size: var(--combobox-toggle-fs);
+	line-height: 1;
+	transition: background var(--transition-base), color var(--transition-base), border-color var(--transition-base);
+}
+.combobox-toggle:hover {
+	background: var(--color-accent);
+	color: var(--combobox-toggle-hover-color);
+	border-color: var(--color-accent);
+}
+.combobox:focus-within .combobox-input,
+.combobox:focus-within .combobox-toggle {
+	border-color: var(--color-accent);
+}
+.combobox:has(.combobox-input:disabled) .combobox-toggle {
+	opacity: var(--opacity-disabled);
+	cursor: not-allowed;
+	pointer-events: none;
+}
+.combobox-list {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 500;
+	background: var(--color-field-bg);
+	border: var(--border-width) solid var(--color-border);
+	border-top: none;
+	border-radius: 0 0 var(--radius-ui) var(--radius-ui);
+	max-height: var(--combobox-list-max-h);
+	overflow-y: auto;
+	list-style: none;
+	margin: 0;
+	padding: var(--combobox-list-padding);
+}
+.combobox-list li {
+	padding: var(--sp-input-v) var(--sp-input-h);
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: var(--fs-base);
+}
+.combobox-list li.hidden {
+	display: none;
+}
+.combobox-list li:hover,
+.combobox-list li.combobox-active {
+	background: var(--color-split-selected-bg);
+	color: var(--color-split-selected-text);
+}
+/* ---- プリセット行（ヒントアイコン + プリセットボタン群） ---- */
+.preset-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--gap-xs);
+	padding: 0 var(--gap-xs);
+}
+/* ---- プリセット行ヒントアイコン ---- */
+.preset-hint {
+	flex-shrink: 0;
+	opacity: var(--opacity-active);
+}
+/* ---- プリセットボタン(.btn と併用を前提とした複合セレクタで特異度を確保) ---- */
+.btn.btn-preset {
+	font-size: var(--fs-btn-preset);
+	padding: var(--sp-btn-preset-v) var(--sp-btn-preset-h);
+	min-width: unset;
+	background: var(--color-btn-preset-bg);
+	color: var(--color-btn-preset-text);
+	border: var(--border-width) solid var(--color-btn-preset-border);
+}
+.btn.btn-preset:hover {
+	opacity: var(--opacity-hover);
+}
+/* ---- クリップボードコピーボタン ---- */
+.btn-clip-copy {
+	background: none;
+	border: none;
+	padding: var(--sp-btn-clip-copy);
+	margin-left: auto;
+	cursor: pointer;
+	color: var(--color-text-sub);
+	opacity: 0;
+	flex-shrink: 0;
+	align-self: center;
+	transition: opacity var(--transition-base), color var(--transition-base);
+	display: flex;
+	align-items: center;
+	line-height: 1;
+}
+.btn-clip-copy .icon {
+	width: var(--size-clip-copy-icon);
+	height: var(--size-clip-copy-icon);
+}
+.clip-copy-block:hover .btn-clip-copy {
+	opacity: var(--opacity-active);
+}
+.btn-clip-copy:hover {
+	opacity: 1;
+	color: var(--color-accent);
+}
+.btn-clip-copy.copied {
+	color: var(--color-notice);
+	opacity: 1;
+}
 /* ---- チェックボックス＋ラベル横並び ---- */
 .form-check-label {
 	display: flex;

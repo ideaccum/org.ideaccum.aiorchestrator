@@ -1,25 +1,19 @@
 package org.ideaccum.ai.orchestrator.context;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.ideaccum.ai.orchestrator.Constants;
+
+import tools.jackson.core.type.TypeReference;
 
 /**
  * 環境設定情報管理クラスです。<br>
@@ -40,7 +34,7 @@ public class Config implements Constants {
 	private Path configFilePath;
 
 	/** プロパティオブジェクト */
-	private Properties properties;
+	private Map<String, String> properties;
 
 	/**
 	 * コンストラクタ<br>
@@ -68,9 +62,10 @@ public class Config implements Constants {
 			throw new InternalError("環境設定情報ファイルパスが指定されていません");
 		}
 		if (!Files.exists(configFile)) {
-			Properties defaults = new Properties();
+			Map<String, String> defaults = new LinkedHashMap<>();
 			try (InputStream is = Config.class.getResourceAsStream(DEFALUT_CONFIG_FILE)) {
-				defaults.load(is);
+				defaults = YAML.readValue(is, new TypeReference<LinkedHashMap<String, String>>() {
+				});
 			} catch (IOException e) {
 				throw new InternalError("デフォルト環境設定情報ファイルの読み込みに失敗しました", e);
 			}
@@ -78,16 +73,14 @@ public class Config implements Constants {
 				if (configFile.getParent() != null) {
 					Files.createDirectories(configFile.getParent());
 				}
-				try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(configFile.toFile()), StandardCharsets.UTF_8))) {
-					defaults.store(writer, null);
-				}
+				YAML.writeValue(configFile.toFile(), defaults);
 			} catch (IOException e) {
 				throw new InternalError("デフォルト環境設定情報ファイルの書き出しに失敗しました", e);
 			}
 		}
-		properties = new Properties();
-		try (Reader reader = new InputStreamReader(new BufferedInputStream(Files.newInputStream(configFile)), StandardCharsets.UTF_8)) {
-			properties.load(reader);
+		try {
+			properties = YAML.readValue(configFile.toFile(), new TypeReference<LinkedHashMap<String, String>>() {
+			});
 		} catch (Throwable e) {
 			throw new InternalError(String.format("環境設定情報ファイル(%s)の読み込みに失敗しました", configFile), e);
 		}
@@ -95,13 +88,10 @@ public class Config implements Constants {
 
 	/**
 	 * 環境設定情報をファイルに保存します。<br>
-	 * コメント行を保持するためテキスト行単位で更新します。<br>
 	 * @throws IOException 保存に失敗した場合にスローされます
 	 */
 	public void save() throws IOException {
-		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(configFilePath.toFile()), StandardCharsets.UTF_8))) {
-			properties.store(writer, "");
-		}
+		YAML.writeValue(configFilePath.toFile(), properties);
 	}
 
 	/**
@@ -110,16 +100,16 @@ public class Config implements Constants {
 	 */
 	public Map<String, Object> toConfigMap() {
 		Map<String, Object> map = new LinkedHashMap<>();
-		map.put("theme", properties.getProperty("application.theme", ""));
-		map.put("repositoryPath", properties.getProperty("application.repository.path", ""));
-		map.put("webuiPort", properties.getProperty("application.webui.port", ""));
-		map.put("webuiConnection", properties.getProperty("application.webui.connection", ""));
-		map.put("agentTimeout", properties.getProperty("agent.timeout", ""));
-		map.put("cliClaudeCommand", properties.getProperty("agent.cli.claude-cli.command", ""));
-		map.put("cliGeminiCommand", properties.getProperty("agent.cli.gemini-cli.command", ""));
-		map.put("cliAntigravityCommand", properties.getProperty("agent.cli.antigravity-cli.command", ""));
-		map.put("cliCodexCommand", properties.getProperty("agent.cli.codex-cli.command", ""));
-		map.put("cliCopilotCommand", properties.getProperty("agent.cli.copilot-cli.command", ""));
+		map.put("theme", properties.get("application.theme"));
+		map.put("repositoryPath", properties.get("application.repository.path"));
+		map.put("webuiPort", properties.get("application.webui.port"));
+		map.put("webuiConnection", properties.get("application.webui.connection"));
+		map.put("agentTimeout", properties.get("agent.timeout"));
+		map.put("cliClaudeCommand", properties.get("agent.cli.claude-cli.command"));
+		map.put("cliGeminiCommand", properties.get("agent.cli.gemini-cli.command"));
+		map.put("cliAntigravityCommand", properties.get("agent.cli.antigravity-cli.command"));
+		map.put("cliCodexCommand", properties.get("agent.cli.codex-cli.command"));
+		map.put("cliCopilotCommand", properties.get("agent.cli.copilot-cli.command"));
 		return map;
 	}
 
@@ -128,7 +118,7 @@ public class Config implements Constants {
 	 * @param key プロパティキー
 	 */
 	private void checkRequired(String key) {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			throw new InternalError(String.format("環境定義キー(%s)が指定されていません", key));
 		}
@@ -140,7 +130,7 @@ public class Config implements Constants {
 	 */
 	@SuppressWarnings("unused")
 	private void checkRegexp(String key) {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			return;
 		}
@@ -156,7 +146,7 @@ public class Config implements Constants {
 	 * @param key プロパティキー
 	 */
 	private void checkInteger(String key) {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			return;
 		}
@@ -173,7 +163,7 @@ public class Config implements Constants {
 	 */
 	@SuppressWarnings("unused")
 	private void checkBoolean(String key) throws InternalError {
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		if (raw == null || raw.isBlank()) {
 			return;
 		}
@@ -190,7 +180,7 @@ public class Config implements Constants {
 	 */
 	public Theme getApplicationTheme() {
 		String key = "application.theme";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return Theme.of(raw);
 	}
@@ -201,7 +191,7 @@ public class Config implements Constants {
 	 */
 	public void setApplicationTheme(String theme) {
 		String key = "application.theme";
-		properties.setProperty(key, theme);
+		properties.put(key, theme);
 	}
 
 	/**
@@ -210,7 +200,7 @@ public class Config implements Constants {
 	 */
 	public Path getApplicationRepositoryPath() {
 		String key = "application.repository.path";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return Path.of(raw);
 	}
@@ -221,7 +211,7 @@ public class Config implements Constants {
 	 */
 	public void setApplicationRepositoryPath(String path) {
 		String key = "application.repository.path";
-		properties.setProperty(key, path);
+		properties.put(key, path);
 	}
 
 	/**
@@ -230,7 +220,7 @@ public class Config implements Constants {
 	 */
 	public int getApplicationWebuiPort() {
 		String key = "application.webui.port";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "0");
 		checkRequired(key);
 		checkInteger(key);
 		return Integer.parseInt(raw);
@@ -242,7 +232,7 @@ public class Config implements Constants {
 	 */
 	public void setApplicationWebuiPort(int port) {
 		String key = "application.webui.port";
-		properties.setProperty(key, String.valueOf(port));
+		properties.put(key, String.valueOf(port));
 	}
 
 	/**
@@ -251,7 +241,7 @@ public class Config implements Constants {
 	 */
 	public int getApplicationWebuiConnection() {
 		String key = "application.webui.connection";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "0");
 		checkRequired(key);
 		checkInteger(key);
 		return Integer.parseInt(raw);
@@ -263,7 +253,7 @@ public class Config implements Constants {
 	 */
 	public void setApplicationWebuiConnection(int connection) {
 		String key = "application.webui.connection";
-		properties.setProperty(key, String.valueOf(connection));
+		properties.put(key, String.valueOf(connection));
 	}
 
 	/**
@@ -272,7 +262,7 @@ public class Config implements Constants {
 	 */
 	public int getAgentTimeout() {
 		String key = "agent.timeout";
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "0");
 		checkRequired(key);
 		checkInteger(key);
 		return Integer.parseInt(raw);
@@ -284,7 +274,7 @@ public class Config implements Constants {
 	 */
 	public void setAgentTimeout(int timeout) {
 		String key = "agent.timeout";
-		properties.setProperty(key, String.valueOf(timeout));
+		properties.put(key, String.valueOf(timeout));
 	}
 
 	/**
@@ -294,7 +284,7 @@ public class Config implements Constants {
 	 */
 	public String getAgentCliCommand(String type) {
 		String key = String.format("agent.cli.%s.command", type);
-		String raw = properties.getProperty(key);
+		String raw = properties.getOrDefault(key, "");
 		checkRequired(key);
 		return raw;
 	}
@@ -306,7 +296,7 @@ public class Config implements Constants {
 	 */
 	public void setAgentCliCommand(String type, String command) {
 		String key = String.format("agent.cli.%s.command", type);
-		properties.setProperty(key, command);
+		properties.put(key, command);
 	}
 
 	/**
@@ -321,15 +311,15 @@ public class Config implements Constants {
 	/**
 	 * プロジェクト設定ファイルパスを取得します。<br>
 	 * @param projectName プロジェクト名
-	 * @return プロジェクト設定ファイルパス({@code .orchestrator/project.properties})
+	 * @return プロジェクト設定ファイルパス({@code .orchestrator/project.yaml})
 	 */
 	public Path getApplicationProjectPropertiesPath(String projectName) {
-		return getApplicationAgentsPath(projectName).getParent().resolve("project.properties");
+		return getApplicationAgentsPath(projectName).getParent().resolve("project.yaml");
 	}
 
 	/**
 	 * プロジェクトワークスペースパス配下のプロジェクト名一覧を取得します。<br>
-	 * {@code .orchestrator/project.properties}が存在するディレクトリのみをプロジェクトとして返却します。<br>
+	 * {@code .orchestrator/project.yaml}が存在するディレクトリのみをプロジェクトとして返却します。<br>
 	 * @return プロジェクトワークスペースパス配下のプロジェクト名
 	 */
 	public List<String> getApplicationProjectNames() {
@@ -357,7 +347,7 @@ public class Config implements Constants {
 	 */
 	public Path getApplicationLogPath(String projectName) {
 		//String key = "application.logs.path";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_LOGS_PATH);
@@ -370,7 +360,7 @@ public class Config implements Constants {
 	 */
 	public Path getApplicationMemoryPath(String projectName) {
 		//String key = "application.memory.path";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_MEMORY_PATH);
@@ -383,7 +373,7 @@ public class Config implements Constants {
 	 */
 	public Path getApplicationAgentsPath(String projectName) {
 		//String key = "application.agents.path";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_AGENTS_PATH);
@@ -395,7 +385,7 @@ public class Config implements Constants {
 	 */
 	public String getAgentFinalizeKeyword() {
 		//String key = "agent.finalize.keyword";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return raw;
 		return AGENT_FINALIZE_KEYWORD;
@@ -407,7 +397,7 @@ public class Config implements Constants {
 	 */
 	public String getAgentStopKeyword() {
 		//String key = "agent.stop.keyword";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return raw;
 		return AGENT_INTERRRUPTE_KEYWORD;
@@ -419,7 +409,7 @@ public class Config implements Constants {
 	 */
 	public Pattern getAgentDispatchKeywordPattern() {
 		//String key = "agent.dispacth.keyword.pattern";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//checkRegexp(key);
 		//return Pattern.compile(raw);
@@ -433,7 +423,7 @@ public class Config implements Constants {
 	 */
 	public Path getAgentConversationLogfile(String projectName) {
 		//String key = "agent.conversation.logfile";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_CONVERSATION_FILE);
@@ -446,7 +436,7 @@ public class Config implements Constants {
 	 */
 	public Path getAgentSessionStore(String projectName) {
 		//String key = "agent.session.storefile";
-		//String raw = properties.getProperty(key);
+		//String raw = properties.getOrDefault(key, "");
 		//checkRequired(key);
 		//return Path.of(getApplicationRepositoryPath().toString(), projectName, raw);
 		return Path.of(getApplicationRepositoryPath().toString(), projectName, ORCHESTRATOR_SESSIONS_FILE);

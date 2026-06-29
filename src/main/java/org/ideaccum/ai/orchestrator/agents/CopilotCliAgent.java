@@ -125,7 +125,7 @@ public class CopilotCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			if ("session.mcp_server_status_changed".equals(node.path("type").asString())) {
 				result = "MCPサーバーのステータスを変更しました。";
@@ -230,7 +230,7 @@ public class CopilotCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// typeがassistant.message以外は解析スキップ
 			if (!"assistant.message".equals(node.path("type").asString())) {
@@ -267,7 +267,7 @@ public class CopilotCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			String type = node.path("type").asString("");
 

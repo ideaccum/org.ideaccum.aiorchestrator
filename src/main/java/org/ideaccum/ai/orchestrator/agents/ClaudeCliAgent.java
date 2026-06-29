@@ -165,7 +165,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 				return result;
 			}
 
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 			String type = node.path("type").asString();
 
 			if ("system".equals(type)) {
@@ -268,7 +268,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// content内容を取得
 			String result = node.path("session_id").asString();
@@ -293,7 +293,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// typeがassistant以外は解析スキップ
 			if (!"assistant".equals(node.path("type").asString())) {
@@ -334,7 +334,7 @@ public class ClaudeCliAgent extends AbstractCliAgent {
 			return null;
 		}
 		try {
-			JsonNode node = MAPPER.readTree(response);
+			JsonNode node = JSON.readTree(response);
 
 			// type=resultのみ対象とする(assistant、user、systemはスキップ)
 			if (!"result".equals(node.path("type").asString())) {

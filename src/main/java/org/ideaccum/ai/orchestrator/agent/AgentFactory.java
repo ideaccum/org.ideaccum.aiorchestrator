@@ -59,7 +59,7 @@ public class AgentFactory implements Constants {
 		 * エージェント設定情報読み込み
 		 */
 		List<AgentConfig> agentConfigs = new ArrayList<>();
-		try (DirectoryStream<Path> stream = Files.newDirectoryStream(agentsPath, "*.properties")) {
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(agentsPath, "*.yaml")) {
 			for (Path file : stream) {
 				agentConfigs.add(new AgentConfig(file));
 			}
